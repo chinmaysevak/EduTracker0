@@ -85,7 +85,7 @@ EduTrack is fully responsive and optimized for:
 
 1. **Clone repository**
    ```bash
-   git clone https://github.com/yourusername/edutrack.git
+   git clone https://github.com/chinmaysevak/edutrack.git
    cd edutrack
    ```
 

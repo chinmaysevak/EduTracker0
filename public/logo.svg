@@ -1,0 +1,27 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Graduation Cap Logo -->
+  <defs>
+    <linearGradient id="capGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tasselGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cap Base -->
+  <path d="M16 2L2 8L16 14L30 8L16 2Z" fill="url(#capGradient)" />
+  
+  <!-- Cap Top -->
+  <path d="M16 14V22" stroke="url(#capGradient)" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Cap Brim -->
+  <path d="M2 8V16L16 22L30 16V8" fill="url(#capGradient)" opacity="0.8" />
+  
+  <!-- Tassel -->
+  <circle cx="16" cy="22" r="2" fill="url(#tasselGradient)" />
+  <path d="M16 24L16 28" stroke="url(#tasselGradient)" stroke-width="1.5" stroke-linecap="round" />
+  <path d="M14 26L18 30" stroke="url(#tasselGradient)" stroke-width="1.5" stroke-linecap="round" />
+</svg>

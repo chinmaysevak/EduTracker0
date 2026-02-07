@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import { 
   CommandDialog, 
   CommandEmpty, 
@@ -295,6 +296,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
+      
       {/* Search Command Dialog */}
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search anything..." className="text-base" />

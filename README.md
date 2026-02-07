@@ -85,7 +85,7 @@ EduTrack is fully responsive and optimized for:
 
 1. **Clone repository**
    ```bash
-   git clone https://github.com/chinmaysevak/edutrack.git
+   git clone https://github.com/chinmaysevak/EduTracker0.git
    cd edutrack
    ```
 
@@ -117,7 +117,7 @@ npm run preview
 ## 📁 Project Structure
 
 ```
-edutrack/
+EduTracker0/
 ├── public/                 # Static assets
 │   ├── favicon.svg         # Favicon
 │   └── logo.svg          # App logo
@@ -234,7 +234,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any issues or have suggestions:
 
-1. Check existing [Issues](https://github.com/yourusername/edutrack/issues)
+1. Check existing [Issues](https://github.com/chinmaysevak/EduTracker0/issues)
 2. Create a new issue with a detailed description
 3. Include screenshots for UI issues
 4. Specify browser and device information

@@ -332,7 +332,7 @@ function App() {
         isSidebarCollapsed ? 'w-16' : 'w-64'
       }`}>
         {/* Logo and Collapse Button */}
-        <div className={`flex items-center justify-between flex-shrink-0 relative z-10 pointer-events-none ${
+        <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center gap-2' : 'flex-row items-center justify-between'} flex-shrink-0 relative z-10 pointer-events-none ${
           isSidebarCollapsed ? 'p-3' : 'p-4'
         }`}>
           <button 
@@ -367,7 +367,7 @@ function App() {
             variant="ghost"
             size="icon"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="w-8 h-8 rounded-lg flex-shrink-0 hover:bg-muted/50 pointer-events-auto"
+            className={`${isSidebarCollapsed ? 'self-center w-8 h-8' : ''} rounded-lg flex-shrink-0 hover:bg-muted/50 pointer-events-auto`}
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${

@@ -4,6 +4,7 @@
 
 import { toast } from 'sonner';
 import { useLocalStorage } from './useLocalStorage';
+import { clearAllFiles } from '@/lib/db';
 import type { EduTrackerExport, Subject, DailyAttendance, StudyMaterial, YouTubePlaylist, StudyTask, CourseProgress, Notification } from '@/types';
 
 export function useImportExport() {
@@ -47,7 +48,7 @@ export function useImportExport() {
   const exportData = () => {
     try {
       const currentData = getCurrentData();
-      
+
       const exportData: EduTrackerExport = {
         version: '1.0.0',
         exportDate: new Date().toISOString(),
@@ -56,7 +57,7 @@ export function useImportExport() {
 
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      
+
       // Create download link
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
@@ -80,7 +81,7 @@ export function useImportExport() {
   const importData = (file: File) => {
     return new Promise<boolean>((resolve) => {
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         try {
           const content = e.target?.result as string;
@@ -149,7 +150,7 @@ export function useImportExport() {
   };
 
   // Clear all data
-  const clearAllData = () => {
+  const clearAllData = async () => {
     try {
       const keys = [
         'edu-tracker-subjects',
@@ -167,9 +168,16 @@ export function useImportExport() {
         localStorage.removeItem(key);
       });
 
+      // Clear IndexedDB files
+      try {
+        await clearAllFiles();
+      } catch (e) {
+        console.error('Failed to clear IndexedDB:', e);
+      }
+
       // Reload the page to reset the state
       window.location.reload();
-      
+
       toast.success('All data cleared successfully!');
       return true;
     } catch (error) {

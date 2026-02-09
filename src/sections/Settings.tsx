@@ -3,10 +3,10 @@
 // ============================================
 
 import { useState, useRef } from 'react';
-import { 
-  Download, 
-  Upload, 
-  Trash2, 
+import {
+  Download,
+  Upload,
+  Trash2,
   FileText,
   AlertTriangle,
   CheckCircle
@@ -51,11 +51,11 @@ export default function Settings() {
     }
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
       setIsClearing(true);
       try {
-        clearAllData();
+        await clearAllData();
       } finally {
         setIsClearing(false);
       }
@@ -87,8 +87,9 @@ export default function Settings() {
             <Alert>
               <FileText className="h-4 w-4" />
               <AlertDescription>
-                The exported file contains all your subjects, attendance records, study materials, 
+                The exported file contains all your subjects, attendance records, study materials,
                 playlists, tasks, progress tracking, notifications, and timetable settings.
+                <strong>Note: PDF files are stored separately and are NOT included in the export.</strong>
               </AlertDescription>
             </Alert>
             <Button onClick={handleExport} className="w-full sm:w-auto">
@@ -115,11 +116,11 @@ export default function Settings() {
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Warning:</strong> Importing data will replace all existing data. 
+                <strong>Warning:</strong> Importing data will replace all existing data.
                 Consider exporting your current data first as a backup.
               </AlertDescription>
             </Alert>
-            
+
             <div className="space-y-2">
               <Label htmlFor="import-file">Select JSON File</Label>
               <Input
@@ -131,8 +132,8 @@ export default function Settings() {
                 disabled={isImporting}
               />
             </div>
-            
-            <Button 
+
+            <Button
               onClick={() => fileInputRef.current?.click()}
               disabled={isImporting}
               variant="outline"
@@ -161,12 +162,12 @@ export default function Settings() {
             <Alert className="border-red-200 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-700">
-                <strong>Danger Zone:</strong> This action cannot be undone. 
+                <strong>Danger Zone:</strong> This action cannot be undone.
                 All your data will be permanently deleted.
               </AlertDescription>
             </Alert>
-            
-            <Button 
+
+            <Button
               onClick={handleClearData}
               disabled={isClearing}
               variant="destructive"
@@ -190,19 +191,19 @@ export default function Settings() {
         <CardContent>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              <strong>Export:</strong> Creates a complete backup of all your data in JSON format. 
+              <strong>Export:</strong> Creates a complete backup of all your data in JSON format.
               This file can be used to restore your data on this device or import it to another device.
             </p>
             <p>
-              <strong>Import:</strong> Restores data from a previously exported file. 
+              <strong>Import:</strong> Restores data from a previously exported file.
               This will replace all existing data in the application.
             </p>
             <p>
-              <strong>File Format:</strong> Only JSON files exported from EduTracker can be imported. 
+              <strong>File Format:</strong> Only JSON files exported from EduTracker can be imported.
               The file includes version information to ensure compatibility.
             </p>
             <p>
-              <strong>Data Privacy:</strong> All data is stored locally in your browser. 
+              <strong>Data Privacy:</strong> All data is stored locally in your browser.
               No data is sent to external servers during export or import operations.
             </p>
           </div>

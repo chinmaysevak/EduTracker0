@@ -3,12 +3,12 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  CalendarCheck, 
-  BookOpen, 
-  PlayCircle, 
-  ClipboardList, 
+import {
+  LayoutDashboard,
+  CalendarCheck,
+  BookOpen,
+  PlayCircle,
+  ClipboardList,
   TrendingUp,
   Settings as SettingsIcon,
   Menu,
@@ -25,12 +25,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
-import { 
-  CommandDialog, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem, 
+import BottomNav from '@/components/Layout/BottomNav';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
   CommandList
 } from '@/components/ui/command';
 import {
@@ -53,11 +54,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
-import { 
-  useSubjects, 
-  useStudyMaterials, 
+import {
+  useSubjects,
+  useStudyMaterials,
   useStudyTasks,
-  useNotifications 
+  useNotifications
 } from '@/hooks/useData';
 import type { ModuleType } from '@/types';
 
@@ -65,7 +66,8 @@ import type { ModuleType } from '@/types';
 import Dashboard from '@/sections/Dashboard';
 import AttendanceTracker from '@/sections/AttendanceTracker';
 import StudyMaterials from '@/sections/StudyMaterials';
-import LearningHub from '@/sections/LearningHub';
+import StudyReader from '@/sections/StudyReader';
+// LearningHub removed - merged into Materials
 import StudyPlanner from '@/sections/StudyPlanner';
 import ProgressTracker from '@/sections/ProgressTracker';
 import Settings from '@/sections/Settings';
@@ -76,7 +78,6 @@ const navItems: { id: ModuleType; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { id: 'materials', label: 'Materials', icon: BookOpen },
-  { id: 'learning-hub', label: 'Learning', icon: PlayCircle },
   { id: 'planner', label: 'Planner', icon: ClipboardList },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
@@ -110,13 +111,14 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [userName, setUserName] = useState('');
-  
+  const [currentStudyMaterialId, setCurrentStudyMaterialId] = useState<string | null>(null);
+
   // Initialize authentication state from localStorage
   useEffect(() => {
     try {
       const storedAuth = localStorage.getItem('edu-tracker-authenticated');
       const storedName = localStorage.getItem('edu-tracker-user-name');
-      
+
       if (storedAuth === 'true') {
         setIsAuthenticated(true);
         setUserName(storedName || '');
@@ -208,8 +210,7 @@ function App() {
     switch (activeModule) {
       case 'dashboard': return <Dashboard onNavigate={setActiveModule} dailyQuote={currentQuote} />;
       case 'attendance': return <AttendanceTracker />;
-      case 'materials': return <StudyMaterials />;
-      case 'learning-hub': return <LearningHub />;
+      case 'materials': return <StudyMaterials onStudy={setCurrentStudyMaterialId} />;
       case 'planner': return <StudyPlanner />;
       case 'progress': return <ProgressTracker />;
       case 'settings': return <Settings />;
@@ -219,16 +220,16 @@ function App() {
 
   // Format date and time
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit'
     });
   };
@@ -236,7 +237,7 @@ function App() {
   // Search data
   const searchData = useMemo(() => {
     const items: { title: string; subtitle: string; icon: React.ElementType; action: () => void; group: string }[] = [];
-    
+
     navItems.forEach(item => {
       items.push({
         title: item.label,
@@ -246,7 +247,7 @@ function App() {
         group: 'Navigation'
       });
     });
-    
+
     subjects.forEach(subject => {
       items.push({
         title: subject.name,
@@ -256,7 +257,7 @@ function App() {
         group: 'Subjects'
       });
     });
-    
+
     materials.slice(0, 10).forEach(material => {
       items.push({
         title: material.title,
@@ -266,7 +267,7 @@ function App() {
         group: 'Materials'
       });
     });
-    
+
     tasks.slice(0, 10).forEach(task => {
       items.push({
         title: task.description,
@@ -276,7 +277,7 @@ function App() {
         group: 'Tasks'
       });
     });
-    
+
     return items;
   }, [subjects, materials, tasks]);
 
@@ -294,11 +295,20 @@ function App() {
     return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
   }
 
+  if (currentStudyMaterialId) {
+    return (
+      <StudyReader
+        materialId={currentStudyMaterialId}
+        onClose={() => setCurrentStudyMaterialId(null)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
-      
+
       {/* Search Command Dialog */}
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search anything..." className="text-base" />
@@ -307,8 +317,8 @@ function App() {
           {Object.entries(groupedSearchItems).map(([group, items]) => (
             <CommandGroup key={group} heading={group}>
               {items.map((item, idx) => (
-                <CommandItem 
-                  key={`${group}-${idx}`} 
+                <CommandItem
+                  key={`${group}-${idx}`}
                   onSelect={item.action}
                   className="flex items-center gap-3 py-3 cursor-pointer"
                 >
@@ -328,14 +338,12 @@ function App() {
       </CommandDialog>
 
       {/* Desktop Sidebar */}
-      <aside className={`hidden lg:flex flex-col sticky top-0 h-screen z-50 glass border-r-0 transition-all duration-300 custom-scrollbar relative ${
-        isSidebarCollapsed ? 'w-16' : 'w-64'
-      }`}>
-        {/* Logo and Collapse Button */}
-        <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center gap-2' : 'flex-row items-center justify-between'} flex-shrink-0 relative z-10 pointer-events-none ${
-          isSidebarCollapsed ? 'p-3' : 'p-4'
+      <aside className={`hidden lg:flex flex-col sticky top-0 h-screen z-50 glass border-r-0 transition-all duration-300 custom-scrollbar relative ${isSidebarCollapsed ? 'w-16' : 'w-64'
         }`}>
-          <button 
+        {/* Logo and Collapse Button */}
+        <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center gap-2' : 'flex-row items-center justify-between'} flex-shrink-0 relative z-10 pointer-events-none ${isSidebarCollapsed ? 'p-3' : 'p-4'
+          }`}>
+          <button
             onClick={(e) => {
               e.stopPropagation();
               setActiveModule('dashboard');
@@ -345,9 +353,9 @@ function App() {
           >
             {/* Professional Logo - Graduation Cap */}
             <div className="relative flex-shrink-0">
-              <img 
-                src="/logo.svg" 
-                alt="EduTrack" 
+              <img
+                src="/logo.svg"
+                alt="EduTrack"
                 className="w-10 h-10 rounded-xl shadow-lg"
               />
               <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background flex items-center justify-center">
@@ -370,16 +378,14 @@ function App() {
             className={`${isSidebarCollapsed ? 'self-center w-8 h-8' : ''} rounded-lg flex-shrink-0 hover:bg-muted/50 pointer-events-auto`}
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
-            <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${
-              isSidebarCollapsed ? 'rotate-180' : ''
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isSidebarCollapsed ? 'rotate-180' : ''
+              }`} />
           </Button>
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 space-y-1 overflow-y-auto custom-scrollbar relative z-20 ${
-          isSidebarCollapsed ? 'px-2' : 'px-3'
-        }`}>
+        <nav className={`flex-1 space-y-1 overflow-y-auto custom-scrollbar relative z-20 ${isSidebarCollapsed ? 'px-2' : 'px-3'
+          }`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeModule === item.id;
@@ -387,13 +393,11 @@ function App() {
               <button
                 key={item.id}
                 onClick={() => setActiveModule(item.id)}
-                className={`w-full flex items-center rounded-xl transition-all duration-200 ${
-                  isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5 text-left'
-                } ${
-                  isActive
+                className={`w-full flex items-center rounded-xl transition-all duration-200 ${isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5 text-left'
+                  } ${isActive
                     ? 'bg-primary text-primary-foreground font-medium shadow-md'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                  }`}
                 title={isSidebarCollapsed ? item.label : ''}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
@@ -409,9 +413,8 @@ function App() {
         </nav>
 
         {/* Bottom Actions */}
-        <div className={`border-t border-border/50 space-y-2 relative z-20 ${
-          isSidebarCollapsed ? 'p-2' : 'p-3'
-        }`}>
+        <div className={`border-t border-border/50 space-y-2 relative z-20 ${isSidebarCollapsed ? 'p-2' : 'p-3'
+          }`}>
           {!isSidebarCollapsed && userName && (
             <div className="px-3 py-2 rounded-xl bg-muted/50 border border-border/50 mb-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Signed in as</p>
@@ -423,9 +426,8 @@ function App() {
           )}
           <Button
             variant="ghost"
-            className={`w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:text-foreground ${
-              isSidebarCollapsed ? 'px-3' : ''
-            }`}
+            className={`w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:text-foreground ${isSidebarCollapsed ? 'px-3' : ''
+              }`}
             onClick={() => setAboutOpen(true)}
             title={isSidebarCollapsed ? 'About & Help' : ''}
           >
@@ -434,9 +436,8 @@ function App() {
           </Button>
           <Button
             variant="ghost"
-            className={`w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:text-foreground ${
-              isSidebarCollapsed ? 'px-3' : ''
-            }`}
+            className={`w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:text-foreground ${isSidebarCollapsed ? 'px-3' : ''
+              }`}
             onClick={toggleTheme}
             title={isSidebarCollapsed ? (isDark ? 'Light Mode' : 'Dark Mode') : ''}
           >
@@ -494,7 +495,7 @@ function App() {
             <div>
               <p className="font-medium text-foreground mb-1">Keyboard shortcut</p>
               <p>Press <kbd className="inline-flex h-6 items-center rounded border bg-muted px-2 font-mono text-xs">Ctrl+K</kbd> (or <kbd className="inline-flex h-6 items-center rounded border bg-muted px-2 font-mono text-xs">⌘K</kbd> on Mac) to open search and jump to any section.
-            </p>
+              </p>
             </div>
           </div>
         </DialogContent>
@@ -552,15 +553,14 @@ function App() {
       </AlertDialog>
 
       {/* Mobile Header */}
-      <div className={`lg:hidden fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
-        isScrolled ? 'glass shadow-lg' : 'bg-background'
-      }`}>
+      <div className={`lg:hidden fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${isScrolled ? 'glass shadow-lg' : 'bg-background'
+        }`}>
         <div className="flex items-center justify-between p-3 pr-2">
           <button onClick={() => setActiveModule('dashboard')} className="flex items-center gap-2">
             <div className="relative flex-shrink-0">
-              <img 
-                src="/logo.svg" 
-                alt="EduTrack" 
+              <img
+                src="/logo.svg"
+                alt="EduTrack"
                 className="w-8 h-8 rounded-lg shadow-md"
               />
             </div>
@@ -569,7 +569,7 @@ function App() {
               <p className="text-[9px] text-muted-foreground hidden sm:block">Student Assistant</p>
             </div>
           </button>
-          
+
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} className="h-8 w-8">
               <Search className="w-3.5 h-3.5" />
@@ -588,9 +588,9 @@ function App() {
                   <div className="p-4 border-b border-border/50">
                     <div className="flex items-center gap-2">
                       <div className="relative flex-shrink-0">
-                        <img 
-                          src="/logo.svg" 
-                          alt="EduTrack" 
+                        <img
+                          src="/logo.svg"
+                          alt="EduTrack"
                           className="w-8 h-8 rounded-lg shadow-md"
                         />
                       </div>
@@ -605,11 +605,10 @@ function App() {
                         <button
                           key={item.id}
                           onClick={() => { setActiveModule(item.id); setMobileMenuOpen(false); }}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground font-medium'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
                         >
                           <Icon className="w-4 h-4 flex-shrink-0" />
                           <span className="text-sm">{item.label}</span>
@@ -636,9 +635,8 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 transition-all duration-300">
         {/* Header with Date & Time */}
-        <header className={`sticky top-0 z-40 transition-all duration-200 ${
-          isScrolled ? 'glass shadow-sm' : 'bg-transparent'
-        }`}>
+        <header className={`sticky top-0 z-40 transition-all duration-200 ${isScrolled ? 'glass shadow-sm' : 'bg-transparent'
+          }`}>
           <div className="flex items-center justify-between px-6 py-4">
             {/* Page Title */}
             <div>
@@ -659,7 +657,7 @@ function App() {
               </div>
 
               {/* Search */}
-              <button 
+              <button
                 onClick={() => setSearchOpen(true)}
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-sm text-muted-foreground"
               >
@@ -703,9 +701,8 @@ function App() {
                       notifications.slice(0, 8).map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-4 border-b border-border/30 last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${
-                            !notification.read ? 'bg-muted/20' : ''
-                          }`}
+                          className={`p-4 border-b border-border/30 last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${!notification.read ? 'bg-muted/20' : ''
+                            }`}
                           onClick={() => {
                             markAsRead(notification.id);
                             if (notification.link) setActiveModule(notification.link);
@@ -749,9 +746,13 @@ function App() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-border/50 py-4 px-6 text-center text-xs text-muted-foreground">
+        <footer className="hidden lg:block border-t border-border/50 py-4 px-6 text-center text-xs text-muted-foreground">
           EduTrack · Student Assistant · Search: <kbd className="inline-flex h-5 items-center rounded border bg-muted px-1.5 font-mono">Ctrl+K</kbd>
         </footer>
+
+        {/* Mobile Bottom Navigation */}
+        <BottomNav activeModule={activeModule} onChange={setActiveModule} />
+        <div className="lg:hidden h-20" /> {/* Spacer for bottom nav */}
       </main>
     </div>
   );

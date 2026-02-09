@@ -3,9 +3,9 @@
 // ============================================
 
 import { useState } from 'react';
-import { 
-  Calendar, 
-  Clock, 
+import {
+  Calendar,
+  Clock,
   BookOpen,
   CalendarCheck,
   ClipboardList,
@@ -32,12 +32,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import type { ModuleType } from '@/types';
-import { 
-  useSubjects, 
-  useAttendance, 
-  useTimetable, 
-  useStudyTasks, 
-  useCourseProgress 
+import {
+  useSubjects,
+  useAttendance,
+  useTimetable,
+  useStudyTasks,
+  useCourseProgress
 } from '@/hooks/useData';
 
 interface DashboardProps {
@@ -135,7 +135,7 @@ export default function Dashboard({ onNavigate, dailyQuote }: DashboardProps) {
                 <Award className="w-6 h-6" />
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <Button className="btn-primary rounded-lg" onClick={() => onNavigate('attendance')}>
                 <CalendarCheck className="w-4 h-4 mr-2" />
@@ -257,11 +257,10 @@ export default function Dashboard({ onNavigate, dailyQuote }: DashboardProps) {
                 <button
                   key={day}
                   onClick={() => setSelectedDay(index)}
-                  className={`flex flex-col items-center p-2 rounded-xl min-w-[52px] max-w-[60px] transition-all flex-shrink-0 ${
-                    selectedDay === index 
-                      ? 'bg-primary text-primary-foreground shadow-md' 
+                  className={`flex flex-col items-center p-2 rounded-xl min-w-[52px] max-w-[60px] transition-all flex-shrink-0 ${selectedDay === index
+                      ? 'bg-primary text-primary-foreground shadow-md'
                       : 'hover:bg-muted'
-                  } ${isToday(index) ? 'ring-1 ring-border' : ''}`}
+                    } ${isToday(index) ? 'ring-1 ring-border' : ''}`}
                 >
                   <span className="text-xs font-medium truncate">{day}</span>
                   <span className="text-lg font-semibold mt-0.5">
@@ -279,7 +278,7 @@ export default function Dashboard({ onNavigate, dailyQuote }: DashboardProps) {
                 </div>
               ) : (
                 weekSchedule[selectedDay]?.classes.map((cls, idx) => (
-                  <div 
+                  <div
                     key={idx}
                     className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
                   >
@@ -362,9 +361,9 @@ export default function Dashboard({ onNavigate, dailyQuote }: DashboardProps) {
                   <ClipboardList className="w-4 h-4" />
                   <span className="text-xs">Add Task</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-3 flex flex-col items-center gap-1.5 rounded-xl" onClick={() => onNavigate('learning-hub')}>
-                  <PlayCircle className="w-4 h-4" />
-                  <span className="text-xs">Learning</span>
+                <Button variant="outline" className="h-auto py-3 flex flex-col items-center gap-1.5 rounded-xl" onClick={() => onNavigate('progress')}>
+                  <Target className="w-4 h-4" />
+                  <span className="text-xs">Progress</span>
                 </Button>
                 <Button variant="outline" className="h-auto py-3 flex flex-col items-center gap-1.5 rounded-xl" onClick={() => onNavigate('materials')}>
                   <BookOpen className="w-4 h-4" />
@@ -388,23 +387,22 @@ export default function Dashboard({ onNavigate, dailyQuote }: DashboardProps) {
                 {subjects.slice(0, 5).map(subject => {
                   const stats = calculateSubjectAttendance(subject.id);
                   return (
-                    <div 
-                      key={subject.id} 
+                    <div
+                      key={subject.id}
                       className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => onNavigate('attendance')}
                     >
-                      <div 
-                        className="w-2 h-10 rounded-full" 
+                      <div
+                        className="w-2 h-10 rounded-full"
                         style={{ backgroundColor: subject.color || '#666' }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{subject.name}</p>
                         <p className="text-xs text-muted-foreground">{stats.present}/{stats.total} classes</p>
                       </div>
-                      <span className={`text-sm font-semibold ${
-                        stats.percentage >= 75 ? 'text-emerald-600' : 
-                        stats.percentage >= 60 ? 'text-amber-600' : 'text-red-600'
-                      }`}>
+                      <span className={`text-sm font-semibold ${stats.percentage >= 75 ? 'text-emerald-600' :
+                          stats.percentage >= 60 ? 'text-amber-600' : 'text-red-600'
+                        }`}>
                         {stats.percentage}%
                       </span>
                     </div>

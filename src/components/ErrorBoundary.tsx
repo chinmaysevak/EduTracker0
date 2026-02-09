@@ -1,76 +1,52 @@
-// ============================================
-// Error Boundary - Catches render errors and shows a fallback
-// ============================================
-
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+  error?: Error;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, error: null };
+  public state: State = {
+    hasError: false
+  };
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('App error:', error, info);
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
   }
 
-  render() {
-    if (this.state.hasError && this.state.error) {
+  public render() {
+    if (this.state.hasError) {
       return (
-        <div
-          style={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 24,
-            backgroundColor: '#0f172a',
-            color: '#e2e8f0',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          <h1 style={{ fontSize: 20, marginBottom: 12 }}>Something went wrong</h1>
-          <pre
-            style={{
-              padding: 16,
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: 8,
-              overflow: 'auto',
-              maxWidth: '100%',
-              fontSize: 12,
-            }}
-          >
-            {this.state.error.message}
-          </pre>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              marginTop: 16,
-              padding: '10px 20px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: 14,
-            }}
-          >
-            Reload page
-          </button>
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background text-foreground">
+          <div className="max-w-md text-center space-y-4">
+            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            </div>
+            <h1 className="text-2xl font-bold">Something went wrong</h1>
+            <p className="text-muted-foreground">
+              We encountered an unexpected error. Please try reloading the page.
+            </p>
+            <div className="p-4 bg-muted rounded-lg text-left overflow-auto max-h-40 text-xs font-mono">
+              {this.state.error?.message}
+            </div>
+            <Button onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
+          </div>
         </div>
       );
     }
+
     return this.props.children;
   }
 }

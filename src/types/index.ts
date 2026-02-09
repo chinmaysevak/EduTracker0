@@ -33,16 +33,19 @@ export interface StudyMaterial {
   title: string;
   type: 'note' | 'pdf' | 'link';
   content: string;
+  fileId?: string; // Reference to IndexedDB file
   createdAt: string;
 }
 
 // YouTube Playlist Types
 export interface YouTubePlaylist {
   id: string;
-  name: string;
   subjectId: string;
+  title: string;
   url: string;
-  description?: string;
+  thumbnail?: string;
+  channelName?: string;
+  videoCount?: number;
   addedAt: string;
 }
 
@@ -51,10 +54,11 @@ export type TaskStatus = 'pending' | 'completed';
 
 export interface StudyTask {
   id: string;
-  subjectId: string;
-  description: string;
+  subjectId?: string; // Optional now
+  description: string; // Used as title
   targetDate: string;
-  status: TaskStatus;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'completed';
   createdAt: string;
 }
 
@@ -67,7 +71,7 @@ export interface CourseProgress {
 }
 
 // Navigation Types
-export type ModuleType = 
+export type ModuleType =
   | 'dashboard'
   | 'attendance'
   | 'materials'

@@ -4,24 +4,28 @@
 
 import { useLocalStorage } from './useLocalStorage';
 import { defaultTimetable, defaultCustomTimes, getSubjectColor, generateTimetableWithTimes, extractSubjects } from '@/config/timetable';
-import type { 
-  Subject, 
-  DailyAttendance, 
-  StudyMaterial, 
-  YouTubePlaylist, 
-  StudyTask, 
+import type {
+  Subject,
+  DailyAttendance,
+  StudyMaterial,
+  YouTubePlaylist,
+  StudyTask,
   CourseProgress,
   AttendanceStatus,
   TimetableSlot
 } from '@/types';
 
+// Extend types locally if not yet updated in types/index.ts
+// Ideally we should update types/index.ts, but for now we patch here to avoid breaking content
+// We will update types/index.ts in a separate step to ensure consistency.
+
 // ============================================
 // Subjects Hook - With Add/Remove functionality
 // ============================================
 export function useSubjects(timetableData?: Record<string, string[]>) {
-  const initialSubjects = timetableData ? extractSubjects(timetableData) : 
+  const initialSubjects = timetableData ? extractSubjects(timetableData) :
     ["Mathematical Aptitude", "Lab On Advance Java", "Optimization Technique", "Cyber Security", "HTML CSS", "Advance Java", "Computer Network", "Lab On HTML"];
-  
+
   const defaultSubjects: Subject[] = initialSubjects.map((name: string, index: number) => ({
     id: `sub-${index + 1}`,
     name,
@@ -59,7 +63,7 @@ export function useAttendance() {
   const markAttendance = (date: string, subjectId: string, status: AttendanceStatus) => {
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) {
         if (status === null) return prev;
         return [...prev, { date, subjects: { [subjectId]: status } }];
@@ -67,7 +71,7 @@ export function useAttendance() {
 
       const updated = [...prev];
       const dayData = { ...updated[dayIndex] };
-      
+
       if (status === null) {
         const { [subjectId]: _, ...rest } = dayData.subjects;
         dayData.subjects = rest;
@@ -91,12 +95,12 @@ export function useAttendance() {
       startTime,
       endTime,
       status: null as AttendanceStatus,
-      color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
+      color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
     };
 
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) {
         return [...prev, { date, subjects: {}, extraClasses: [newExtraClass] }];
       }
@@ -115,18 +119,18 @@ export function useAttendance() {
   const removeExtraClass = (date: string, extraClassId: string) => {
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) return prev;
 
       const updated = [...prev];
       const dayData = { ...updated[dayIndex] };
       dayData.extraClasses = (dayData.extraClasses || []).filter(ec => ec.id !== extraClassId);
-      
+
       // Remove day if no subjects and no extra classes
       if (Object.keys(dayData.subjects).length === 0 && dayData.extraClasses.length === 0) {
         return prev.filter(d => d.date !== date);
       }
-      
+
       updated[dayIndex] = dayData;
       return updated;
     });
@@ -136,18 +140,18 @@ export function useAttendance() {
   const markExtraClassAttendance = (date: string, extraClassId: string, status: AttendanceStatus) => {
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) return prev;
 
       const updated = [...prev];
       const dayData = { ...updated[dayIndex] };
-      
+
       if (!dayData.extraClasses) return prev;
-      
-      dayData.extraClasses = dayData.extraClasses.map(ec => 
+
+      dayData.extraClasses = dayData.extraClasses.map(ec =>
         ec.id === extraClassId ? { ...ec, status } : ec
       );
-      
+
       updated[dayIndex] = dayData;
       return updated;
     });
@@ -172,9 +176,9 @@ export function useAttendance() {
   const calculateSubjectAttendance = (subjectId: string): { percentage: number; present: number; total: number } => {
     const relevantDays = attendanceData.filter(day => day.subjects[subjectId] !== undefined);
     const validRecords = relevantDays.filter(day => day.subjects[subjectId] !== 'cancelled');
-    
+
     if (validRecords.length === 0) return { percentage: 0, present: 0, total: 0 };
-    
+
     const presentCount = validRecords.filter(day => day.subjects[subjectId] === 'present').length;
     return {
       percentage: Math.round((presentCount / validRecords.length) * 100),
@@ -271,7 +275,7 @@ export function useTimetable() {
       ...prev,
       [day]: [...(prev[day] || []), subject]
     }));
-    
+
     setCustomTimes(prev => ({
       ...prev,
       [day]: [...(prev[day] || []), { startTime, endTime }]
@@ -284,7 +288,7 @@ export function useTimetable() {
       ...prev,
       [day]: prev[day]?.filter((_, i) => i !== index) || []
     }));
-    
+
     setCustomTimes(prev => ({
       ...prev,
       [day]: prev[day]?.filter((_, i) => i !== index) || []
@@ -299,13 +303,13 @@ export function useTimetable() {
         [day]: prev[day]?.map((s, i) => i === index ? updates.subject! : s) || []
       }));
     }
-    
+
     if (updates.startTime !== undefined || updates.endTime !== undefined) {
       setCustomTimes(prev => ({
         ...prev,
-        [day]: prev[day]?.map((t, i) => i === index ? { 
-          startTime: updates.startTime || t.startTime, 
-          endTime: updates.endTime || t.endTime 
+        [day]: prev[day]?.map((t, i) => i === index ? {
+          startTime: updates.startTime || t.startTime,
+          endTime: updates.endTime || t.endTime
         } : t) || []
       }));
     }
@@ -333,16 +337,30 @@ export function useTimetable() {
 }
 
 // ============================================
-// Study Materials Hook
+// Study Materials Hook - With IndexedDB
 // ============================================
+import { saveFile, deleteFile as deleteDbFile } from '@/lib/db';
+
 export function useStudyMaterials() {
   const [materials, setMaterials] = useLocalStorage<StudyMaterial[]>('edu-tracker-materials', []);
 
-  const addMaterial = (material: Omit<StudyMaterial, 'id' | 'createdAt'>) => {
+  const addMaterial = async (material: Omit<StudyMaterial, 'id' | 'createdAt'>, file?: File) => {
+    let fileId = undefined;
+
+    if (material.type === 'pdf' && file) {
+      try {
+        fileId = await saveFile(file);
+      } catch (error) {
+        console.error("Failed to save file to DB", error);
+        return; // Handle error appropriately in UI
+      }
+    }
+
     const newMaterial: StudyMaterial = {
       ...material,
       id: `mat-${Date.now()}`,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      fileId // Store reference to DB file
     };
     setMaterials(prev => [...prev, newMaterial]);
   };
@@ -351,7 +369,15 @@ export function useStudyMaterials() {
     setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
   };
 
-  const deleteMaterial = (id: string) => {
+  const deleteMaterial = async (id: string) => {
+    const material = materials.find(m => m.id === id);
+    if (material?.fileId) {
+      try {
+        await deleteDbFile(material.fileId);
+      } catch (e) {
+        console.error("Failed to delete file from DB", e);
+      }
+    }
     setMaterials(prev => prev.filter(m => m.id !== id));
   };
 
@@ -429,7 +455,7 @@ export function useStudyTasks() {
   };
 
   const toggleTaskStatus = (id: string) => {
-    setTasks(prev => prev.map(t => 
+    setTasks(prev => prev.map(t =>
       t.id === id ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } : t
     ));
   };
@@ -467,7 +493,7 @@ export function useCourseProgress() {
   const setProgress = (subjectId: string, progress: Partial<CourseProgress>) => {
     setProgressData(prev => {
       const index = prev.findIndex(p => p.subjectId === subjectId);
-      
+
       if (index === -1) {
         return [...prev, {
           subjectId,
@@ -581,7 +607,7 @@ export function useNotifications() {
   ) => {
     const newNotifications: Omit<import('@/types').Notification, 'id' | 'createdAt' | 'read'>[] = [];
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Check for overdue tasks
     const overdueTasks = tasks.filter(t => t.status === 'pending' && t.targetDate < today);
     if (overdueTasks.length > 0) {
@@ -609,7 +635,7 @@ export function useNotifications() {
       const subjectAttendance = attendanceData.filter(day => day.subjects && day.subjects[subject.id] !== undefined);
       const present = subjectAttendance.filter(day => day.subjects[subject.id] === 'present').length;
       const total = subjectAttendance.filter(day => day.subjects[subject.id] !== 'cancelled').length;
-      
+
       if (total > 0) {
         const percentage = Math.round((present / total) * 100);
         if (percentage < 60 && total >= 5) {

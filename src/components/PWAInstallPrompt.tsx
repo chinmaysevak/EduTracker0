@@ -40,7 +40,9 @@ export default function PWAInstallPrompt({ onClose }: PWAInstallPromptProps): Re
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 p-4 bg-background border border-border rounded-lg shadow-lg max-w-sm mx-4 lg:mx-0 lg:right-4">
+    <div
+      className="fixed z-50 p-4 bg-background border border-border rounded-lg shadow-lg max-w-sm mx-4 lg:mx-0 lg:right-4 right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-4"
+    >
       <div className="flex items-center gap-3">
         <Smartphone className="w-5 h-5 text-muted-foreground" />
         <div className="flex-1">

@@ -25,7 +25,7 @@ import {
   StreakWidget,
   ExamCountdownWidget
 } from '@/components/dashboard/SmartWidgets';
-import { DailyActionPanel } from '@/components/dashboard/DailyActionPanel';
+import { WelcomeSection } from '@/components/dashboard/WelcomeSection';
 import { ResumeSessionCard } from '@/components/dashboard/ResumeSessionCard';
 import { WeeklyPerformanceWidget } from '@/components/dashboard/WeeklyPerformanceWidget';
 import type { ModuleType } from '@/types';
@@ -36,7 +36,6 @@ interface DashboardProps {
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const { subjects } = useSubjects();
-  // ... hooks ...
   const { calculateSubjectAttendance } = useAttendance();
   const { getTodayClasses } = useTimetable();
   const { getPendingTasks, getOverdueTasks } = useStudyTasks();
@@ -49,11 +48,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="space-y-6">
+      <WelcomeSection />
+
       {/* Hero Section: Action Panel & Smart Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Action Area */}
         <div className="lg:col-span-2 space-y-6">
-          <DailyActionPanel onNavigate={onNavigate} />
           <WeeklyPerformanceWidget />
         </div>
 

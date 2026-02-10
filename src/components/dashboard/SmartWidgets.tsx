@@ -114,7 +114,7 @@ export function ExamCountdownWidget({ onNavigate }: WidgetProps) {
     const nearestExam = upcomingExams[0];
 
     if (!nearestExam) return (
-        <Card className="card-professional h-full flex flex-col justify-center items-center text-center p-5 text-muted-foreground">
+        <Card className="card-professional flex flex-col justify-center items-center text-center p-5 text-muted-foreground">
             <Clock className="w-8 h-8 mb-2 opacity-20" />
             <p className="text-sm">No upcoming exams set.</p>
             <Button variant="link" className="text-xs h-auto p-0 mt-1" onClick={() => onNavigate('settings')}>

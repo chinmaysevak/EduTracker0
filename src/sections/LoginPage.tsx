@@ -3,10 +3,10 @@
 // ============================================
 
 import { useState } from 'react';
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
   Lock,
   ArrowRight,
   User
@@ -21,6 +21,7 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  console.log('LoginPage: rendering');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,16 +32,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!name.trim() || !email || !password) {
       setError('Please fill in all fields');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     localStorage.setItem('edu-tracker-user-name', name.trim());
     localStorage.setItem('edu-tracker-authenticated', 'true');
     setIsLoading(false);
@@ -77,7 +78,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   {error}
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <div className="relative">
@@ -92,7 +93,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -107,7 +108,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -139,9 +140,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   Forgot password?
                 </button>
               </div>
-              
-              <Button 
-                type="submit" 
+
+              <Button
+                type="submit"
                 className="w-full btn-primary h-11"
                 disabled={isLoading}
               >

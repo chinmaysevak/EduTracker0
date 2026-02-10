@@ -112,3 +112,5 @@ storybook-static/
 
 # Local development
 .local
+
+etc/

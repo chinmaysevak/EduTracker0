@@ -3,12 +3,12 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Check, 
-  X, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Check,
+  X,
   Minus,
   Calendar as CalendarIcon,
   Trash2,
@@ -34,6 +34,8 @@ import { Badge } from '@/components/ui/badge';
 import { useSubjects, useAttendance, useTimetable } from '@/hooks/useData';
 import { toast } from 'sonner';
 import type { AttendanceStatus } from '@/types';
+import { AttendancePredictionModal } from '@/components/attendance/AttendancePredictionModal';
+import { SubjectManagerModal } from '@/components/subjects/SubjectManagerModal';
 
 const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 function formatDateLocal(date: Date) {
@@ -58,38 +60,44 @@ export default function AttendanceTracker() {
   const [calendarDays, setCalendarDays] = useState<Date[]>([]);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
-  
+
+  // Subject Manager & Prediction State
+  const [managingSubjectId, setManagingSubjectId] = useState<string | null>(null);
+  const [isPredictionOpen, setIsPredictionOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('percentage');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [filterStatus, setFilterStatus] = useState<'all' | 'good' | 'warning' | 'critical'>('all');
-  
+
   const [isAddingExtraClass, setIsAddingExtraClass] = useState(false);
   const [extraClassName, setExtraClassName] = useState('');
   const [extraClassStartTime, setExtraClassStartTime] = useState('');
   const [extraClassEndTime, setExtraClassEndTime] = useState('');
-  
+
   const extraClasses = getExtraClasses(selectedDate);
 
   useEffect(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
     const daysFromMonday = (firstDay.getDay() + 6) % 7;
     startDate.setDate(startDate.getDate() - daysFromMonday);
-    
+
     const days: Date[] = [];
     const current = new Date(startDate);
-    
+
     for (let i = 0; i < 42; i++) {
       days.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
-    
+
     setCalendarDays(days);
   }, [currentDate]);
+
+  // ... rest of functions ...
 
   const goToPreviousMonth = () => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -144,7 +152,7 @@ export default function AttendanceTracker() {
   };
 
   const overallStats = getOverallAttendance();
-  
+
   const filteredAndSortedSubjects = useMemo(() => {
     let data = subjects.map(s => {
       const stats = calculateSubjectAttendance(s.id);
@@ -272,8 +280,12 @@ export default function AttendanceTracker() {
           <h2 className="text-3xl font-bold gradient-text">Attendance Tracker</h2>
           <p className="text-muted-foreground mt-1">Monitor your class attendance and performance</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
+          <Button variant="outline" className="rounded-xl gap-2 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800" onClick={() => setIsPredictionOpen(true)}>
+            <TrendingUp className="w-4 h-4" />
+            Forecast
+          </Button>
           <Button variant="outline" className="rounded-xl gap-2" onClick={handleExportCSV}>
             <Download className="w-4 h-4" />
             Export CSV
@@ -285,48 +297,50 @@ export default function AttendanceTracker() {
                 Add Subject
               </Button>
             </DialogTrigger>
-          <DialogContent className="sm:max-w-md card-modern border-0">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
+            <DialogContent className="sm:max-w-md card-modern border-0">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  Add New Subject
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div>
+                  <Label className="text-sm font-medium">Subject Name</Label>
+                  <Input
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    placeholder="e.g., Data Structures"
+                    className="mt-1.5 rounded-xl h-12"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
+                  />
                 </div>
-                Add New Subject
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div>
-                <Label className="text-sm font-medium">Subject Name</Label>
-                <Input
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  placeholder="e.g., Data Structures"
-                  className="mt-1.5 rounded-xl h-12"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
-                />
+                <Button onClick={handleAddSubject} className="w-full btn-gradient rounded-xl h-12">
+                  Add Subject
+                </Button>
               </div>
-              <Button onClick={handleAddSubject} className="w-full btn-gradient rounded-xl h-12">
-                Add Subject
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
+
+
       {/* Stats Overview - Modern Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* ... existing stats cards ... */}
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-lg">
                 <Percent className="w-6 h-6 text-white" />
               </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                overallStats.percentage >= 75 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30' : 
-                overallStats.percentage >= 60 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' : 
-                'bg-rose-100 text-rose-700 dark:bg-rose-900/30'
-              }`}>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${overallStats.percentage >= 75 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30' :
+                overallStats.percentage >= 60 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' :
+                  'bg-rose-100 text-rose-700 dark:bg-rose-900/30'
+                }`}>
                 {overallStats.percentage >= 75 ? 'Excellent' : overallStats.percentage >= 60 ? 'Good' : 'At Risk'}
               </div>
             </div>
@@ -335,7 +349,7 @@ export default function AttendanceTracker() {
             <p className="text-xs text-muted-foreground mt-2">{overallStats.present}/{overallStats.total} classes</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -347,7 +361,7 @@ export default function AttendanceTracker() {
             <p className="text-sm text-muted-foreground mt-1">Classes Present</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -359,7 +373,7 @@ export default function AttendanceTracker() {
             <p className="text-sm text-muted-foreground mt-1">Classes Absent</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -372,6 +386,8 @@ export default function AttendanceTracker() {
           </CardContent>
         </Card>
       </div>
+
+
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -407,7 +423,7 @@ export default function AttendanceTracker() {
                 </div>
               ))}
             </div>
-            
+
             <div className="grid grid-cols-7 gap-1">
               {calendarDays.map((date, index) => {
                 const dateStr = formatDateLocal(date);
@@ -416,7 +432,7 @@ export default function AttendanceTracker() {
                 const hasData = summary.total > 0;
                 const dayOfWeek = date.getDay();
                 const scheduledCount = subjects.filter(s => isSubjectScheduled(s.name, dayOfWeek)).length;
-                
+
                 return (
                   <button
                     key={index}
@@ -435,7 +451,7 @@ export default function AttendanceTracker() {
                     `}>
                       {date.getDate()}
                     </span>
-                    
+
                     {hasData && (
                       <div className="flex gap-0.5 mt-2 flex-wrap">
                         {summary.subjectsPresent > 0 && (
@@ -449,7 +465,7 @@ export default function AttendanceTracker() {
                         )}
                       </div>
                     )}
-                    
+
                     {scheduledCount > 0 && !hasData && (
                       <div className="absolute bottom-2 right-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
@@ -459,7 +475,7 @@ export default function AttendanceTracker() {
                 );
               })}
             </div>
-            
+
             <div className="flex items-center gap-6 mt-6 text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-500" />
@@ -515,15 +531,15 @@ export default function AttendanceTracker() {
                 })}
               </div>
             )}
-            
+
             {(extraClasses.length > 0 || isAddingExtraClass) && (
               <div className="space-y-3 pt-4 border-t border-border">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Extra Classes</p>
                   {!isAddingExtraClass && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-8 px-2 text-xs"
                       onClick={() => setIsAddingExtraClass(true)}
                     >
@@ -531,7 +547,7 @@ export default function AttendanceTracker() {
                     </Button>
                   )}
                 </div>
-                
+
                 {isAddingExtraClass && (
                   <div className="p-4 rounded-2xl bg-violet-50/50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 space-y-3">
                     <Input
@@ -555,17 +571,17 @@ export default function AttendanceTracker() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="flex-1 h-10 rounded-xl btn-gradient"
                         onClick={handleAddExtraClass}
                         disabled={!extraClassName.trim()}
                       >
                         <Check className="w-4 h-4 mr-1" /> Add
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="h-10 rounded-xl"
                         onClick={() => {
                           setIsAddingExtraClass(false);
@@ -579,14 +595,14 @@ export default function AttendanceTracker() {
                     </div>
                   </div>
                 )}
-                
+
                 {extraClasses.map(extraClass => (
-                  <div 
+                  <div
                     key={extraClass.id}
                     className="flex items-center gap-3 p-3 rounded-xl bg-violet-50/30 dark:bg-violet-900/10 border border-violet-200/50 dark:border-violet-800/50 group"
                   >
-                    <div 
-                      className="w-2 h-10 rounded-full" 
+                    <div
+                      className="w-2 h-10 rounded-full"
                       style={{ backgroundColor: extraClass.color || '#8b5cf6' }}
                     />
                     <div className="flex-1 min-w-0">
@@ -597,30 +613,28 @@ export default function AttendanceTracker() {
                         </p>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleMarkExtraClassAttendance(extraClass.id, 'present')}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                          extraClass.status === 'present' 
-                            ? 'bg-emerald-500 text-white' 
-                            : 'bg-muted hover:bg-emerald-100 hover:text-emerald-600'
-                        }`}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${extraClass.status === 'present'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-muted hover:bg-emerald-100 hover:text-emerald-600'
+                          }`}
                       >
                         <Check className="w-4 h-4" />
                       </button>
-                      
+
                       <button
                         onClick={() => handleMarkExtraClassAttendance(extraClass.id, 'absent')}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                          extraClass.status === 'absent' 
-                            ? 'bg-rose-500 text-white' 
-                            : 'bg-muted hover:bg-rose-100 hover:text-rose-600'
-                        }`}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${extraClass.status === 'absent'
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-muted hover:bg-rose-100 hover:text-rose-600'
+                          }`}
                       >
                         <X className="w-4 h-4" />
                       </button>
-                      
+
                       <button
                         onClick={() => removeExtraClass(selectedDate, extraClass.id)}
                         className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted hover:bg-rose-100 hover:text-rose-600 transition-all"
@@ -632,7 +646,7 @@ export default function AttendanceTracker() {
                 ))}
               </div>
             )}
-            
+
             {selectedDayAllSubjects.filter(s => !selectedDayScheduled.find(ss => ss.id === s.id)).length > 0 && (
               <div className="space-y-3 pt-4 border-t border-border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Other Subjects</p>
@@ -651,11 +665,11 @@ export default function AttendanceTracker() {
                   })}
               </div>
             )}
-            
+
             {!isAddingExtraClass && extraClasses.length === 0 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="w-full h-10 rounded-xl border-dashed border-violet-300 hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20"
                 onClick={() => setIsAddingExtraClass(true)}
               >
@@ -679,7 +693,7 @@ export default function AttendanceTracker() {
                 <p className="text-sm text-muted-foreground">Detailed breakdown by subject</p>
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -690,7 +704,7 @@ export default function AttendanceTracker() {
                   className="pl-10 h-11 rounded-xl w-full sm:w-56"
                 />
               </div>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-2 h-11 rounded-xl">
@@ -743,12 +757,12 @@ export default function AttendanceTracker() {
               </div>
             ) : (
               filteredAndSortedSubjects.map((subject) => (
-                <div 
+                <div
                   key={subject.id}
                   className="group flex flex-col sm:grid sm:grid-cols-12 gap-3 sm:gap-4 p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-all duration-300"
                 >
                   <div className="sm:col-span-4 flex items-center gap-3">
-                    <div 
+                    <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
                       style={{ backgroundColor: subject.color || '#6b7280' }}
                     >
@@ -765,10 +779,9 @@ export default function AttendanceTracker() {
                   <div className="sm:col-span-2 flex items-center justify-between sm:justify-center">
                     <span className="sm:hidden text-xs font-medium text-muted-foreground">Attendance:</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-2xl font-bold ${
-                        subject.stats.percentage >= 75 ? 'text-emerald-600' : 
+                      <span className={`text-2xl font-bold ${subject.stats.percentage >= 75 ? 'text-emerald-600' :
                         subject.stats.percentage >= 60 ? 'text-amber-500' : 'text-rose-500'
-                      }`}>
+                        }`}>
                         {subject.stats.percentage}%
                       </span>
                       <span className="hidden sm:inline">{getStatusBadge(subject.stats.percentage)}</span>
@@ -793,15 +806,24 @@ export default function AttendanceTracker() {
                   <div className="sm:col-span-3 flex items-center gap-3">
                     <div className="flex-1">
                       <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            subject.stats.percentage >= 75 ? 'bg-emerald-500' : 
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${subject.stats.percentage >= 75 ? 'bg-emerald-500' :
                             subject.stats.percentage >= 60 ? 'bg-amber-500' : 'bg-rose-500'
-                          }`}
+                            }`}
                           style={{ width: `${subject.stats.percentage}%` }}
                         />
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setManagingSubjectId(subject.id);
+                        }}
+                        className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline mt-1 pl-1"
+                      >
+                        Manage Topics & Exam
+                      </button>
                     </div>
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -809,7 +831,7 @@ export default function AttendanceTracker() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="rounded-xl">
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-rose-600"
                           onClick={() => removeSubject(subject.id)}
                         >
@@ -842,6 +864,17 @@ export default function AttendanceTracker() {
           )}
         </CardContent>
       </Card>
+
+      <SubjectManagerModal
+        subjectId={managingSubjectId}
+        isOpen={!!managingSubjectId}
+        onClose={() => setManagingSubjectId(null)}
+      />
+
+      <AttendancePredictionModal
+        isOpen={isPredictionOpen}
+        onClose={() => setIsPredictionOpen(false)}
+      />
     </div>
   );
 }
@@ -856,46 +889,43 @@ interface SubjectAttendanceRowProps {
 function SubjectAttendanceRow({ subject, status, onMark }: SubjectAttendanceRowProps) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group">
-      <div 
-        className="w-2 h-10 rounded-full" 
+      <div
+        className="w-2 h-10 rounded-full"
         style={{ backgroundColor: subject.color || '#9ca3af' }}
       />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{subject.name}</p>
       </div>
-      
+
       <div className="flex items-center gap-1">
         <button
           onClick={() => onMark('present')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-            status === 'present' 
-              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
-              : 'bg-muted hover:bg-emerald-100 hover:text-emerald-600'
-          }`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${status === 'present'
+            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+            : 'bg-muted hover:bg-emerald-100 hover:text-emerald-600'
+            }`}
           title="Present"
         >
           <Check className="w-4 h-4" />
         </button>
-        
+
         <button
           onClick={() => onMark('absent')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-            status === 'absent' 
-              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' 
-              : 'bg-muted hover:bg-rose-100 hover:text-rose-600'
-          }`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${status === 'absent'
+            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'
+            : 'bg-muted hover:bg-rose-100 hover:text-rose-600'
+            }`}
           title="Absent"
         >
           <X className="w-4 h-4" />
         </button>
-        
+
         <button
           onClick={() => onMark('cancelled')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-            status === 'cancelled' 
-              ? 'bg-gray-500 text-white' 
-              : 'bg-muted hover:bg-gray-200'
-          }`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${status === 'cancelled'
+            ? 'bg-gray-500 text-white'
+            : 'bg-muted hover:bg-gray-200'
+            }`}
           title="Cancelled"
         >
           <Minus className="w-4 h-4" />

@@ -12,7 +12,9 @@ import type {
   StudyTask,
   CourseProgress,
   AttendanceStatus,
-  TimetableSlot
+  TimetableSlot,
+  Topic,
+  FocusSessionLog
 } from '@/types';
 
 // Extend types locally if not yet updated in types/index.ts
@@ -29,19 +31,27 @@ export function useSubjects(timetableData?: Record<string, string[]>) {
   const defaultSubjects: Subject[] = initialSubjects.map((name: string, index: number) => ({
     id: `sub-${index + 1}`,
     name,
-    color: getSubjectColor(name)
+    color: getSubjectColor(name),
+    difficulty: 3,
+    totalTopics: 10
   }));
 
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('edu-tracker-subjects', defaultSubjects);
 
-  const addSubject = (name: string): string => {
+  const addSubject = (name: string, difficulty: number = 3): string => {
     const newSubject: Subject = {
       id: `sub-${Date.now()}`,
       name: name.trim(),
-      color: getSubjectColor(name.trim())
+      color: getSubjectColor(name.trim()),
+      difficulty,
+      totalTopics: 10
     };
     setSubjects(prev => [...prev, newSubject]);
     return newSubject.id;
+  };
+
+  const updateSubject = (id: string, updates: Partial<Subject>) => {
+    setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
   const removeSubject = (id: string) => {
@@ -51,8 +61,122 @@ export function useSubjects(timetableData?: Record<string, string[]>) {
   const getSubjectById = (id: string) => subjects.find(s => s.id === id);
   const getSubjectByName = (name: string) => subjects.find(s => s.name === name);
 
-  return { subjects, addSubject, removeSubject, getSubjectById, getSubjectByName };
+  return { subjects, addSubject, updateSubject, removeSubject, getSubjectById, getSubjectByName };
 }
+
+// ... existing code ...
+
+// ============================================
+// User Profile Hook (Gamification)
+// ============================================
+import type { UserProfile, Badge } from '@/types';
+
+export function useUserProfile() {
+  const defaultProfile: UserProfile = {
+    name: 'Student',
+    xp: 0,
+    level: 1,
+    currentStreak: 0,
+    longestStreak: 0,
+    lastStudyDate: '',
+    badges: []
+  };
+
+  const [profile, setProfile] = useLocalStorage<UserProfile>('edu-tracker-profile', defaultProfile);
+
+  const addXP = (amount: number) => {
+    setProfile(prev => {
+      const newXP = prev.xp + amount;
+      // Level up every 1000 XP * level
+      const xpNeeded = prev.level * 1000;
+      let newLevel = prev.level;
+      if (newXP >= xpNeeded) {
+        newLevel += 1;
+        // Optionally trigger level up notification here
+      }
+      return { ...prev, xp: newXP, level: newLevel };
+    });
+  };
+
+  const updateStreak = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setProfile(prev => {
+      if (prev.lastStudyDate === today) return prev; // Already updated today
+
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      let newStreak = prev.currentStreak;
+
+      if (prev.lastStudyDate === yesterday) {
+        newStreak += 1;
+      } else {
+        newStreak = 1; // Reset streak
+      }
+
+      return {
+        ...prev,
+        currentStreak: newStreak,
+        longestStreak: Math.max(newStreak, prev.longestStreak),
+        lastStudyDate: today
+      };
+    });
+  };
+
+  const awardBadge = (badge: Badge) => {
+    setProfile(prev => {
+      if (prev.badges.some(b => b.id === badge.id)) return prev;
+      return { ...prev, badges: [...prev.badges, badge] };
+    });
+  };
+
+  return { profile, addXP, updateStreak, awardBadge, setProfile };
+}
+
+// ============================================
+// Academic Insights Hook
+// ============================================
+import { calculateAttendanceSafeZone, calculateSubjectPriority, calculateExamReadiness } from '@/lib/academicMath';
+
+export function useAcademicInsights() {
+  const { subjects } = useSubjects();
+  const { calculateSubjectAttendance } = useAttendance();
+  const { tasks } = useStudyTasks();
+
+  const getSubjectInsights = (subjectId: string) => {
+    const subject = subjects.find(s => s.id === subjectId);
+    if (!subject) return null;
+
+    const attendance = calculateSubjectAttendance(subjectId);
+    const attendanceAnalysis = calculateAttendanceSafeZone(attendance.present, attendance.total);
+
+    const priorityScore = calculateSubjectPriority(subject, tasks);
+
+    // Calculate pseudo 'assignments completed' for readiness
+    const subjectTasks = tasks.filter(t => t.subjectId === subjectId);
+    const completedTasks = subjectTasks.filter(t => t.status === 'completed').length;
+
+    const readiness = calculateExamReadiness(
+      subject,
+      attendance.percentage,
+      completedTasks,
+      subjectTasks.length
+    );
+
+    return {
+      attendanceAnalysis,
+      priorityScore,
+      readiness
+    };
+  };
+
+  const getTopPrioritySubjects = () => {
+    return subjects
+      .map(s => ({ subject: s, score: calculateSubjectPriority(s, tasks) }))
+      .sort((a, b) => b.score - a.score);
+  };
+
+  return { getSubjectInsights, getTopPrioritySubjects };
+}
+
 
 // ============================================
 // Attendance Hook - Per-subject tracking
@@ -455,9 +579,17 @@ export function useStudyTasks() {
   };
 
   const toggleTaskStatus = (id: string) => {
-    setTasks(prev => prev.map(t =>
-      t.id === id ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } : t
-    ));
+    setTasks(prev => prev.map(t => {
+      if (t.id === id) {
+        const newStatus = t.status === 'completed' ? 'pending' : 'completed';
+        return {
+          ...t,
+          status: newStatus,
+          completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined
+        };
+      }
+      return t;
+    }));
   };
 
   const getPendingTasks = () => tasks.filter(t => t.status === 'pending');
@@ -662,4 +794,60 @@ export function useNotifications() {
     clearAll,
     generateSmartNotifications
   };
+}
+
+// ============================================
+// Topic Tracking Hook
+// ============================================
+export function useTopics() {
+  const [topics, setTopics] = useLocalStorage<Topic[]>('edu-tracker-topics', []);
+
+  const addTopic = (topic: Omit<Topic, 'id' | 'status'>) => {
+    const newTopic: Topic = {
+      ...topic,
+      id: `topic-${Date.now()}`,
+      status: 'pending'
+    };
+    setTopics(prev => [...prev, newTopic]);
+  };
+
+  const updateTopic = (id: string, updates: Partial<Topic>) => {
+    setTopics(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const deleteTopic = (id: string) => {
+    setTopics(prev => prev.filter(t => t.id !== id));
+  };
+
+  const getTopicsForSubject = (subjectId: string) => {
+    return topics.filter(t => t.subjectId === subjectId);
+  };
+
+  return { topics, addTopic, updateTopic, deleteTopic, getTopicsForSubject };
+}
+
+// ============================================
+// Focus History Hook
+// ============================================
+export function useFocusHistory() {
+  const [history, setHistory] = useLocalStorage<FocusSessionLog[]>('edu-tracker-focus-history', []);
+
+  const logSession = (session: Omit<FocusSessionLog, 'id'>) => {
+    const newLog: FocusSessionLog = {
+      ...session,
+      id: `focus-${Date.now()}`
+    };
+    setHistory(prev => [newLog, ...prev]);
+  };
+
+  const getHistoryForSubject = (subjectId: string) => {
+    return history.filter(h => h.subjectId === subjectId);
+  };
+
+  const getTotalStudyTime = (subjectId?: string) => {
+    const relevantLogs = subjectId ? history.filter(h => h.subjectId === subjectId) : history;
+    return relevantLogs.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+  };
+
+  return { history, logSession, getHistoryForSubject, getTotalStudyTime };
 }

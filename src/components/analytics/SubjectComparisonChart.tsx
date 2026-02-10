@@ -1,114 +1,89 @@
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Cell
+} from 'recharts';
 
 interface SubjectComparisonChartProps {
-  data: {
-    subjectId: string;
-    subjectName: string;
-    percentage: number;
-    present: number;
-    total: number;
-  }[];
+    data: {
+        subjectId: string;
+        subjectName: string;
+        percentage: number;
+        present: number;
+        total: number;
+    }[];
 }
 
+const COLORS = [
+    '#8b5cf6', // Violet
+    '#3b82f6', // Blue
+    '#10b981', // Emerald
+    '#f59e0b', // Amber
+    '#ef4444', // Red
+];
+
 export function SubjectComparisonChart({ data }: SubjectComparisonChartProps) {
-  const chartData = {
-    labels: data.map(d => d.subjectName),
-    datasets: [
-      {
-        label: 'Attendance %',
-        data: data.map(d => d.percentage),
-        backgroundColor: data.map((_, index) => [
-          'rgba(147, 51, 234, 0.8)',  // Violet
-          'rgba(59, 130, 246, 0.8)',   // Blue  
-          'rgba(16, 185, 129, 0.8)',   // Emerald
-          'rgba(251, 146, 60, 0.8)',   // Amber
-          'rgba(239, 68, 68, 0.8)',    // Red
-        ][index % 5]),
-        borderColor: [
-          'rgb(147, 51, 234)',  // Violet
-          'rgb(59, 130, 246)',   // Blue  
-          'rgb(16, 185, 129)',   // Emerald
-          'rgb(251, 146, 60)',   // Amber
-          'rgb(239, 68, 68)',    // Red
-        ][index % 5],
-        borderWidth: 2,
-        borderRadius: 8,
-      },
-    ],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: true,
-        text: 'Subject Performance Comparison',
-        font: {
-          size: 16,
-          weight: 'bold' as const,
-        },
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context: any) {
-            const dataIndex = context.dataIndex;
-            const subjectData = data[dataIndex];
-            return [
-              `Attendance: ${subjectData.percentage.toFixed(1)}%`,
-              `Classes Present: ${subjectData.present}/${subjectData.total}`,
-            ];
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: {
-          callback: function(value: any) {
-            return value + '%';
-          },
-        },
-        title: {
-          display: true,
-          text: 'Attendance %',
-        },
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Subjects',
-        },
-      },
-    },
-  };
-
-  return (
-    <div className="w-full h-80">
-      <Bar data={chartData} options={options} />
-    </div>
-  );
+    return (
+        <div className="w-full h-80">
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                    data={data}
+                    margin={{
+                        top: 20,
+                        right: 30,
+                        left: 20,
+                        bottom: 5,
+                    }}
+                >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                        dataKey="subjectName"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12 }}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={70}
+                    />
+                    <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12 }}
+                        domain={[0, 100]}
+                    />
+                    <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                                const dataPoint = payload[0].payload;
+                                return (
+                                    <div className="rounded-lg border bg-background p-3 shadow-lg">
+                                        <p className="font-semibold mb-1">{label}</p>
+                                        <p className="text-sm text-foreground">
+                                            Attendance: <span className="font-bold">{dataPoint.percentage}%</span>
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {dataPoint.present}/{dataPoint.total} classes
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        }}
+                    />
+                    <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                        {data.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </Bar>
+                </BarChart>
+            </ResponsiveContainer>
+        </div>
+    );
 }

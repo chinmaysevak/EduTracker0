@@ -53,7 +53,9 @@ export default function StudyPlanner() {
     subjectId: '',
     description: '',
     targetDate: new Date().toISOString().split('T')[0],
-    priority: 'medium' as 'low' | 'medium' | 'high'
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    estimatedMinutes: '',
+    marks: ''
   });
 
   const filteredTasks = tasks.filter(t => {
@@ -87,9 +89,18 @@ export default function StudyPlanner() {
         subjectId: formData.subjectId,
         description: formData.description.trim(),
         targetDate: formData.targetDate,
-        priority: formData.priority
+        priority: formData.priority,
+        estimatedMinutes: formData.estimatedMinutes ? parseInt(formData.estimatedMinutes) : undefined,
+        marks: formData.marks ? parseInt(formData.marks) : undefined
       });
-      setFormData({ subjectId: '', description: '', targetDate: new Date().toISOString().split('T')[0], priority: 'medium' });
+      setFormData({
+        subjectId: '',
+        description: '',
+        targetDate: new Date().toISOString().split('T')[0],
+        priority: 'medium',
+        estimatedMinutes: '',
+        marks: ''
+      });
       setIsAddDialogOpen(false);
       toast.success('Task added successfully');
     } else {
@@ -102,10 +113,19 @@ export default function StudyPlanner() {
       updateTask(editingTask.id, {
         description: formData.description.trim(),
         targetDate: formData.targetDate,
-        priority: formData.priority
+        priority: formData.priority,
+        estimatedMinutes: formData.estimatedMinutes ? parseInt(formData.estimatedMinutes) : undefined,
+        marks: formData.marks ? parseInt(formData.marks) : undefined
       });
       setEditingTask(null);
-      setFormData({ subjectId: '', description: '', targetDate: new Date().toISOString().split('T')[0], priority: 'medium' });
+      setFormData({
+        subjectId: '',
+        description: '',
+        targetDate: new Date().toISOString().split('T')[0],
+        priority: 'medium',
+        estimatedMinutes: '',
+        marks: ''
+      });
       toast.success('Task updated');
     }
   };
@@ -116,7 +136,9 @@ export default function StudyPlanner() {
       subjectId: task.subjectId || '',
       description: task.description,
       targetDate: task.targetDate,
-      priority: task.priority || 'medium'
+      priority: task.priority || 'medium',
+      estimatedMinutes: task.estimatedMinutes?.toString() || '',
+      marks: task.marks?.toString() || ''
     });
   };
 
@@ -188,6 +210,31 @@ export default function StudyPlanner() {
                   placeholder="e.g., Complete Chapter 5 exercises"
                   className="mt-1.5 rounded-xl h-12"
                 />
+              </div>
+
+
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Est. Time (mins)</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 60"
+                    value={formData.estimatedMinutes}
+                    onChange={(e) => setFormData({ ...formData, estimatedMinutes: e.target.value })}
+                    className="mt-1.5 rounded-xl h-12"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Marks / Weight</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 100"
+                    value={formData.marks}
+                    onChange={(e) => setFormData({ ...formData, marks: e.target.value })}
+                    className="mt-1.5 rounded-xl h-12"
+                  />
+                </div>
               </div>
 
               <div>
@@ -442,7 +489,7 @@ export default function StudyPlanner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 }
 

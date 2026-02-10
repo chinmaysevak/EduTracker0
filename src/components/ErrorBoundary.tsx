@@ -26,6 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      console.log('ErrorBoundary: displaying error UI', this.state.error);
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background text-foreground">
           <div className="max-w-md text-center space-y-4">

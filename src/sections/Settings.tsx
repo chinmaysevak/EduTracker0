@@ -22,29 +22,36 @@ export default function Settings() {
   const { exportData, importData, clearAllData } = useImportExport();
   const [isImporting, setIsImporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
     exportData();
   };
 
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.json')) {
-      alert('Please select a valid JSON file');
-      return;
-    }
+  const handleImport = async () => {
+    if (!selectedFile) return;
 
     setIsImporting(true);
     try {
-      const success = await importData(file);
+      const success = await importData(selectedFile, password);
       if (success) {
-        // Clear the file input
+        // Clear inputs
+        setSelectedFile(null);
+        setPassword('');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+      }
+    } catch (error: any) {
+      if (error.message === 'PASSWORD_REQUIRED') {
+        alert('This backup is encrypted. Please enter the password securely.');
+        // Maybe focus the password field?
+      } else if (error.message === 'INVALID_PASSWORD') {
+        alert('Incorrect password. Please try again.');
+      } else {
+        alert(`Import failed: ${error.message}`);
       }
     } finally {
       setIsImporting(false);
@@ -113,34 +120,65 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Warning:</strong> Importing data will replace all existing data.
-                Consider exporting your current data first as a backup.
-              </AlertDescription>
-            </Alert>
-
             <div className="space-y-2">
-              <Label htmlFor="import-file">Select JSON File</Label>
-              <Input
-                ref={fileInputRef}
-                id="import-file"
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                disabled={isImporting}
-              />
+              <Label htmlFor="import-file">Select Backup File (JSON, ZIP, or AJBAK)</Label>
+              <div className="flex gap-2">
+                <Input
+                  ref={fileInputRef}
+                  id="import-file"
+                  type="file"
+                  accept=".json,.zip,.ajbak"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (!file.name.match(/\.(json|zip|ajbak)$/i)) {
+                        alert('Please select a valid backup file (JSON, ZIP, or AJBAK)');
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        return;
+                      }
+                      setSelectedFile(file);
+                    }
+                  }}
+                  disabled={isImporting}
+                />
+                {selectedFile && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setPassword('');
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
+            {selectedFile && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                <Label htmlFor="backup-password">Backup Password (if encrypted)</Label>
+                <Input
+                  id="backup-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password..."
+                  disabled={isImporting}
+                />
+              </div>
+            )}
+
             <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
-              variant="outline"
+              onClick={handleImport}
+              disabled={isImporting || !selectedFile}
+              variant="default"
               className="w-full sm:w-auto"
             >
               <Upload className="h-4 w-4 mr-2" />
-              {isImporting ? 'Importing...' : 'Import Data'}
+              {isImporting ? 'Importing...' : 'Start Import'}
             </Button>
           </div>
         </CardContent>

@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   CalendarCheck,
   BookOpen,
-  PlayCircle,
   ClipboardList,
   TrendingUp,
   Settings as SettingsIcon,
@@ -18,7 +17,6 @@ import {
   Search,
   Trash2,
   ChevronRight,
-  Quote,
   HelpCircle,
   User
 } from 'lucide-react';
@@ -49,8 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
@@ -72,6 +69,8 @@ import StudyPlanner from '@/sections/StudyPlanner';
 import ProgressTracker from '@/sections/ProgressTracker';
 import Settings from '@/sections/Settings';
 import LoginPage from '@/sections/LoginPage';
+import FocusMode from '@/sections/FocusMode';
+import { GamificationProfile } from '@/components/gamification/GamificationProfile';
 
 // Navigation items
 const navItems: { id: ModuleType; label: string; icon: React.ElementType }[] = [
@@ -83,18 +82,9 @@ const navItems: { id: ModuleType; label: string; icon: React.ElementType }[] = [
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
-// Daily quotes for inspiration
-const dailyQuotes = [
-  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
-  { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
-  { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
-  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-  { text: "Education is the passport to the future.", author: "Malcolm X" },
-  { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs" },
-  { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
-  { text: "Knowledge is power. Information is liberating.", author: "Kofi Annan" },
-];
 
+
+// FULLY RESTORED APP
 function App() {
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -102,7 +92,7 @@ function App() {
   const { toggleTheme, isDark } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchOpen, setSearchOpen] = useState(false);
-  const [currentQuote, setCurrentQuote] = useState(dailyQuotes[0]);
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -173,13 +163,7 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Change quote based on day
-  useEffect(() => {
-    const startOfYear = new Date(currentTime.getFullYear(), 0, 0);
-    const diff = currentTime.getTime() - startOfYear.getTime();
-    const dayOfYear = Math.floor(diff / 1000 / 60 / 60 / 24);
-    setCurrentQuote(dailyQuotes[dayOfYear % dailyQuotes.length]);
-  }, []);
+
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -208,13 +192,14 @@ function App() {
 
   const renderModule = () => {
     switch (activeModule) {
-      case 'dashboard': return <Dashboard onNavigate={setActiveModule} dailyQuote={currentQuote} />;
+      case 'dashboard': return <Dashboard onNavigate={setActiveModule} />;
       case 'attendance': return <AttendanceTracker />;
       case 'materials': return <StudyMaterials onStudy={setCurrentStudyMaterialId} />;
       case 'planner': return <StudyPlanner />;
       case 'progress': return <ProgressTracker />;
       case 'settings': return <Settings />;
-      default: return <Dashboard onNavigate={setActiveModule} dailyQuote={currentQuote} />;
+      case 'focus': return <FocusMode onExit={() => setActiveModule('dashboard')} />;
+      default: return <Dashboard onNavigate={setActiveModule} />;
     }
   };
 
@@ -289,6 +274,7 @@ function App() {
     });
     return groups;
   }, [searchData]);
+
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
@@ -465,21 +451,7 @@ function App() {
           )}
         </div>
 
-        {/* Daily Quote - Only show when not collapsed */}
-        {!isSidebarCollapsed && (
-          <div className="px-3 pb-3 relative z-20">
-            <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Quote className="w-3 h-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground font-medium">Daily Inspiration</span>
-              </div>
-              <p className="text-xs text-foreground leading-relaxed line-clamp-3">
-                "{currentQuote.text}"
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-2">— {currentQuote.author}</p>
-            </div>
-          </div>
-        )}
+
       </aside>
 
       {/* About & Help Dialog */}
@@ -501,28 +473,31 @@ function App() {
         </DialogContent>
       </Dialog>
 
-      {/* Profile (Edit name) Dialog */}
+      {/* Profile Dialog */}
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit profile</DialogTitle>
+            <DialogTitle>Student Profile</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="profile-name">Your name</Label>
-              <Input
-                id="profile-name"
-                value={profileNameInput}
-                onChange={(e) => setProfileNameInput(e.target.value)}
-                placeholder="Enter your name"
-                className="rounded-xl"
-              />
+
+          <div className="py-4">
+            <GamificationProfile />
+
+            <div className="mt-8 pt-4 border-t">
+              <h4 className="text-sm font-medium mb-3">Profile Settings</h4>
+              <div className="flex gap-2">
+                <Input
+                  value={profileNameInput}
+                  onChange={(e) => setProfileNameInput(e.target.value)}
+                  placeholder="Enter your name"
+                  className="rounded-xl"
+                />
+                <Button onClick={saveProfile} disabled={!profileNameInput.trim()}>
+                  Update Name
+                </Button>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setProfileOpen(false)}>Cancel</Button>
-            <Button onClick={saveProfile} disabled={!profileNameInput.trim()}>Save</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -759,3 +734,10 @@ function App() {
 }
 
 export default App;
+
+/*
+// MINIMAL APP FOR DEBUGGING HOOKS
+function App() {
+// ...
+}
+*/

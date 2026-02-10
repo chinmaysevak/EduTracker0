@@ -1,4 +1,4 @@
-import { openDB, type DBSchema } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 interface EduTrackDB extends DBSchema {
   files: {
@@ -20,7 +20,7 @@ const DB_VERSION = 1;
 export async function initDB() {
   try {
     return await openDB<EduTrackDB>(DB_NAME, DB_VERSION, {
-      upgrade(db: import('idb').IDBPDatabase<EduTrackDB>) {
+      upgrade(db: IDBPDatabase<EduTrackDB>) {
         if (!db.objectStoreNames.contains('files')) {
           const store = db.createObjectStore('files', { keyPath: 'id' });
           store.createIndex('by-date', 'createdAt');

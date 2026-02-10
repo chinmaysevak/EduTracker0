@@ -16,12 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-interface LoginPageProps {
-  onLogin: () => void;
-}
+import { useAuth } from '@/context/AuthContext';
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage() {
   console.log('LoginPage: rendering');
+  const { login } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,10 +41,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    localStorage.setItem('edu-tracker-user-name', name.trim());
-    localStorage.setItem('edu-tracker-authenticated', 'true');
+    login(name.trim(), email);
     setIsLoading(false);
-    onLogin();
   };
 
   return (

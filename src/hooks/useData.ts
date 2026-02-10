@@ -24,7 +24,7 @@ import type {
 // ============================================
 // Subjects Hook - With Add/Remove functionality
 // ============================================
-export function useSubjects(timetableData?: Record<string, string[]>) {
+export function useSubjects(timetableData?: Record<string, string[]>, userId?: string) {
   const initialSubjects = timetableData ? extractSubjects(timetableData) :
     ["Mathematical Aptitude", "Lab On Advance Java", "Optimization Technique", "Cyber Security", "HTML CSS", "Advance Java", "Computer Network", "Lab On HTML"];
 
@@ -36,7 +36,7 @@ export function useSubjects(timetableData?: Record<string, string[]>) {
     totalTopics: 10
   }));
 
-  const [subjects, setSubjects] = useLocalStorage<Subject[]>('edu-tracker-subjects', defaultSubjects);
+  const [subjects, setSubjects] = useLocalStorage<Subject[]>('edu-tracker-subjects', defaultSubjects, userId);
 
   const addSubject = (name: string, difficulty: number = 3): string => {
     const newSubject: Subject = {
@@ -71,7 +71,7 @@ export function useSubjects(timetableData?: Record<string, string[]>) {
 // ============================================
 import type { UserProfile, Badge } from '@/types';
 
-export function useUserProfile() {
+export function useUserProfile(userId?: string) {
   const defaultProfile: UserProfile = {
     name: 'Student',
     xp: 0,
@@ -82,7 +82,7 @@ export function useUserProfile() {
     badges: []
   };
 
-  const [profile, setProfile] = useLocalStorage<UserProfile>('edu-tracker-profile', defaultProfile);
+  const [profile, setProfile] = useLocalStorage<UserProfile>('edu-tracker-profile', defaultProfile, userId);
 
   const addXP = (amount: number) => {
     setProfile(prev => {
@@ -181,8 +181,8 @@ export function useAcademicInsights() {
 // ============================================
 // Attendance Hook - Per-subject tracking
 // ============================================
-export function useAttendance() {
-  const [attendanceData, setAttendanceData] = useLocalStorage<DailyAttendance[]>('edu-tracker-attendance-v2', []);
+export function useAttendance(userId?: string) {
+  const [attendanceData, setAttendanceData] = useLocalStorage<DailyAttendance[]>('edu-tracker-attendance-v2', [], userId);
 
   const markAttendance = (date: string, subjectId: string, status: AttendanceStatus) => {
     setAttendanceData(prev => {
@@ -362,9 +362,9 @@ export function useAttendance() {
 // ============================================
 // Timetable Hook - Now editable with localStorage
 // ============================================
-export function useTimetable() {
-  const [timetableData, setTimetableData] = useLocalStorage<Record<string, string[]>>('edu-tracker-timetable-data', defaultTimetable);
-  const [customTimes, setCustomTimes] = useLocalStorage<Record<string, { startTime: string; endTime: string }[]>>('edu-tracker-timetable-times', defaultCustomTimes);
+export function useTimetable(userId?: string) {
+  const [timetableData, setTimetableData] = useLocalStorage<Record<string, string[]>>('edu-tracker-timetable-data', defaultTimetable, userId);
+  const [customTimes, setCustomTimes] = useLocalStorage<Record<string, { startTime: string; endTime: string }[]>>('edu-tracker-timetable-times', defaultCustomTimes, userId);
 
   const fullTimetable = generateTimetableWithTimes(timetableData, customTimes);
 
@@ -465,8 +465,8 @@ export function useTimetable() {
 // ============================================
 import { saveFile, deleteFile as deleteDbFile } from '@/lib/db';
 
-export function useStudyMaterials() {
-  const [materials, setMaterials] = useLocalStorage<StudyMaterial[]>('edu-tracker-materials', []);
+export function useStudyMaterials(userId?: string) {
+  const [materials, setMaterials] = useLocalStorage<StudyMaterial[]>('edu-tracker-materials', [], userId);
 
   const addMaterial = async (material: Omit<StudyMaterial, 'id' | 'createdAt'>, file?: File) => {
     let fileId = undefined;
@@ -521,8 +521,8 @@ export function useStudyMaterials() {
 // ============================================
 // YouTube Playlists Hook
 // ============================================
-export function usePlaylists() {
-  const [playlists, setPlaylists] = useLocalStorage<YouTubePlaylist[]>('edu-tracker-playlists', []);
+export function usePlaylists(userId?: string) {
+  const [playlists, setPlaylists] = useLocalStorage<YouTubePlaylist[]>('edu-tracker-playlists', [], userId);
 
   const addPlaylist = (playlist: Omit<YouTubePlaylist, 'id' | 'addedAt'>) => {
     const newPlaylist: YouTubePlaylist = {
@@ -557,8 +557,8 @@ export function usePlaylists() {
 // ============================================
 // Study Tasks Hook
 // ============================================
-export function useStudyTasks() {
-  const [tasks, setTasks] = useLocalStorage<StudyTask[]>('edu-tracker-tasks', []);
+export function useStudyTasks(userId?: string) {
+  const [tasks, setTasks] = useLocalStorage<StudyTask[]>('edu-tracker-tasks', [], userId);
 
   const addTask = (task: Omit<StudyTask, 'id' | 'createdAt' | 'status'>) => {
     const newTask: StudyTask = {
@@ -619,8 +619,8 @@ export function useStudyTasks() {
 // ============================================
 // Course Progress Hook
 // ============================================
-export function useCourseProgress() {
-  const [progressData, setProgressData] = useLocalStorage<CourseProgress[]>('edu-tracker-progress', []);
+export function useCourseProgress(userId?: string) {
+  const [progressData, setProgressData] = useLocalStorage<CourseProgress[]>('edu-tracker-progress', [], userId);
 
   const setProgress = (subjectId: string, progress: Partial<CourseProgress>) => {
     setProgressData(prev => {
@@ -700,8 +700,8 @@ const defaultNotifications: import('@/types').Notification[] = [
   }
 ];
 
-export function useNotifications() {
-  const [notifications, setNotifications] = useLocalStorage<import('@/types').Notification[]>('edu-tracker-notifications', defaultNotifications);
+export function useNotifications(userId?: string) {
+  const [notifications, setNotifications] = useLocalStorage<import('@/types').Notification[]>('edu-tracker-notifications', defaultNotifications, userId);
 
   const addNotification = (notification: Omit<import('@/types').Notification, 'id' | 'createdAt' | 'read'>) => {
     const newNotification: import('@/types').Notification = {

@@ -51,12 +51,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
-import {
-  useSubjects,
-  useStudyMaterials,
-  useStudyTasks,
-  useNotifications
-} from '@/hooks/useData';
 import type { ModuleType } from '@/types';
 
 // Import module components
@@ -84,6 +78,11 @@ const navItems: { id: ModuleType; label: string; icon: React.ElementType }[] = [
 
 
 
+import { useAuth } from '@/context/AuthContext';
+import { useStudentStore } from '@/context/StudentContext';
+
+// ... (imports remain the same)
+
 // FULLY RESTORED APP
 function App() {
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
@@ -93,69 +92,35 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Authenticated State from Context
+  const { user, isAuthenticated, logout, updateProfile } = useAuth();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileNameInput, setProfileNameInput] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const [userName, setUserName] = useState('');
   const [currentStudyMaterialId, setCurrentStudyMaterialId] = useState<string | null>(null);
 
-  // Initialize authentication state from localStorage
-  useEffect(() => {
-    try {
-      const storedAuth = localStorage.getItem('edu-tracker-authenticated');
-      const storedName = localStorage.getItem('edu-tracker-user-name');
-
-      if (storedAuth === 'true') {
-        setIsAuthenticated(true);
-        setUserName(storedName || '');
-      } else {
-        setUserName(storedName || '');
-      }
-    } catch {
-      setUserName('');
-      setIsAuthenticated(false);
-    }
-  }, []); // Run only once on mount
-
-  // Update userName when authentication changes (for profile updates)
-  useEffect(() => {
-    if (isAuthenticated) {
-      try {
-        const storedName = localStorage.getItem('edu-tracker-user-name');
-        setUserName(storedName || '');
-      } catch {
-        setUserName('');
-      }
-    }
-  }, [isAuthenticated]);
+  const userName = user?.name || '';
 
   const openProfileDialog = () => {
     setProfileNameInput(userName);
     setProfileOpen(true);
   };
+
   const saveProfile = () => {
     const name = profileNameInput.trim();
     if (name) {
-      try {
-        localStorage.setItem('edu-tracker-user-name', name);
-        setUserName(name);
-        setProfileOpen(false);
-        toast.success('Profile updated.');
-      } catch {
-        toast.error('Could not save name.');
-      }
+      updateProfile(name);
+      setProfileOpen(false);
+      toast.success('Profile updated.');
     }
   };
 
-  // Data hooks
-  const { subjects } = useSubjects();
-  const { materials } = useStudyMaterials();
-  const { tasks } = useStudyTasks();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  // Data hooks from StudentStore
+  const { subjects, materials, tasks, notifications } = useStudentStore();
+  const { unreadCount, markAsRead, markAllAsRead, deleteNotification } = notifications;
 
   // Update time every minute for live clock (hour:min display)
   useEffect(() => {
@@ -233,7 +198,7 @@ function App() {
       });
     });
 
-    subjects.forEach(subject => {
+    subjects.subjects.forEach(subject => {
       items.push({
         title: subject.name,
         subtitle: 'Subject',
@@ -243,7 +208,7 @@ function App() {
       });
     });
 
-    materials.slice(0, 10).forEach(material => {
+    materials.materials.slice(0, 10).forEach(material => {
       items.push({
         title: material.title,
         subtitle: 'Material',
@@ -253,7 +218,7 @@ function App() {
       });
     });
 
-    tasks.slice(0, 10).forEach(task => {
+    tasks.tasks.slice(0, 10).forEach(task => {
       items.push({
         title: task.description,
         subtitle: `Due ${task.targetDate}`,
@@ -264,7 +229,7 @@ function App() {
     });
 
     return items;
-  }, [subjects, materials, tasks]);
+  }, [subjects.subjects, materials.materials, tasks.tasks]);
 
   const groupedSearchItems = useMemo(() => {
     const groups: Record<string, typeof searchData> = {};
@@ -278,7 +243,11 @@ function App() {
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+    // Note: ensure LoginPage is updated to accept no props or we wrapper it
+    // Actually, we can just pass a dummy or refactor LoginPage to use useAuth too.
+    // For now, let's keep it simple: 
+    // Wait, LoginPage needs to CALL login. 
+    return <LoginPage />;
   }
 
   if (currentStudyMaterialId) {
@@ -515,8 +484,7 @@ function App() {
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={() => {
-                localStorage.removeItem('edu-tracker-authenticated');
-                setIsAuthenticated(false);
+                logout();
                 setLogoutDialogOpen(false);
                 toast.success('You have been logged out.');
               }}
@@ -668,12 +636,12 @@ function App() {
                     )}
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {notifications.notifications.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground text-sm">
                         No notifications yet
                       </div>
                     ) : (
-                      notifications.slice(0, 8).map((notification) => (
+                      notifications.notifications.slice(0, 8).map((notification) => (
                         <div
                           key={notification.id}
                           className={`p-4 border-b border-border/30 last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${!notification.read ? 'bg-muted/20' : ''

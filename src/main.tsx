@@ -4,6 +4,8 @@ import { Toaster } from 'sonner'
 import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AuthProvider } from '@/context/AuthContext'
+import { StudentProvider } from '@/context/StudentContext'
 
 window.onerror = function (message, source, lineno, colno, error) {
   const errorDiv = document.createElement('div');
@@ -47,7 +49,11 @@ console.log('Main.tsx executing');
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <AuthProvider>
+        <StudentProvider>
+          <App />
+        </StudentProvider>
+      </AuthProvider>
       <Toaster position="bottom-right" richColors />
     </ErrorBoundary>
   </StrictMode>,

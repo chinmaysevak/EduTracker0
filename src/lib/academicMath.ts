@@ -82,37 +82,72 @@ export const calculateSubjectPriority = (
 export const calculateExamReadiness = (
     subject: Subject,
     attendancePercentage: number,
-    assignmentsCompleted: number,
-    totalAssignments: number
+    completedTasks: number,
+    totalTasks: number
 ): { score: number; label: string; color: string } => {
-    // Weighted Average
-    // Attendance: 30%
-    // Assignments/Tasks: 40%
-    // Difficulty Adjustment: 30%
-
     let score = 0;
 
-    // Attendance Part (Max 30)
-    score += Math.min(attendancePercentage, 100) * 0.3;
+    // Attendance weight (40%)
+    if (attendancePercentage >= 75) score += 40;
+    else if (attendancePercentage >= 60) score += 20;
 
-    // Assignments Part (Max 40)
-    const assignmentScore = totalAssignments > 0 ? (assignmentsCompleted / totalAssignments) * 100 : 50; // Default to 50 if no tasks
-    score += assignmentScore * 0.4;
+    // Task completion weight (40%)
+    if (totalTasks > 0) {
+        const taskRate = completedTasks / totalTasks;
+        score += taskRate * 40;
+    } else {
+        score += 40; // No tasks = assumed caught up? Or neutral.
+    }
 
-    // Difficulty Part (Inverse: Harder subject starts with lower readiness) (Max 30)
-    // Difficulty 1 (Easy) -> +30
-    // Difficulty 5 (Hard) -> +0
-    const difficulty = subject.difficulty || 3;
-    const difficultyBonus = (5 - difficulty) * 7.5; // Scale 1-5 to 0-30 range
-    score += difficultyBonus;
+    // Difficulty adjustment (20%)
+    // Harder subjects need more prep, so "readiness" is lower by default?
+    // Or: High difficulty means we need MORE work to be ready.
+    // Let's keep it simple: 
+    const difficultyMod = (5 - (subject.difficulty || 3)) * 5; // Easier subjects give +points
+    score += difficultyMod;
 
-    // Normalize
-    score = Math.round(score);
+    const finalScore = Math.min(100, Math.round(score));
 
-    if (score >= 90) return { score, label: 'Exam Ready', color: 'text-emerald-500' };
-    if (score >= 70) return { score, label: 'Good', color: 'text-blue-500' };
-    if (score >= 40) return { score, label: 'Moderate', color: 'text-amber-500' };
-    return { score, label: 'Not Ready', color: 'text-red-500' };
+    if (finalScore >= 90) return { score: finalScore, label: 'Exam Ready', color: 'text-emerald-500' };
+    if (finalScore >= 70) return { score: finalScore, label: 'Good', color: 'text-blue-500' };
+    if (finalScore >= 40) return { score: finalScore, label: 'Moderate', color: 'text-amber-500' };
+    return { score: finalScore, label: 'Not Ready', color: 'text-red-500' };
+};
+
+export const calculateDetentionRisk = (
+    present: number,
+    total: number,
+    minPercentage: number = 75
+): { status: 'safe' | 'warning' | 'detention'; classesToAttend: number; classesCanMiss: number } => {
+    if (total === 0) return { status: 'safe', classesToAttend: 0, classesCanMiss: 0 };
+
+    const currentPercentage = (present / total) * 100;
+
+    if (currentPercentage >= minPercentage) {
+        // Safe. How many can we miss?
+        // (present) / (total + x) >= 0.75
+        // present = 0.75 * (total + x)
+        // present / 0.75 = total + x
+        // x = (present / 0.75) - total
+        const canMiss = Math.floor((present / (minPercentage / 100)) - total);
+        return { status: 'safe', classesToAttend: 0, classesCanMiss: Math.max(0, canMiss) };
+    } else {
+        // Detention Risk. How many must we attend?
+        // (present + x) / (total + x) >= 0.75
+        // present + x = 0.75 * total + 0.75 * x
+        // 0.25 * x = 0.75 * total - present
+        // x = (0.75 * total - present) / (1 - 0.75)
+
+        // General formula: x = (target% * total - present) / (1 - target%)
+        const target = minPercentage / 100;
+        const needed = Math.ceil((target * total - present) / (1 - target));
+
+        return {
+            status: currentPercentage < (minPercentage - 15) ? 'detention' : 'warning',
+            classesToAttend: Math.max(0, needed),
+            classesCanMiss: 0
+        };
+    }
 };
 
 // ============================================

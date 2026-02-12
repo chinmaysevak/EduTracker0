@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Download, Smartphone } from 'lucide-react';
 
@@ -6,7 +7,7 @@ interface PWAInstallPromptProps {
   onClose?: () => void;
 }
 
-export default function PWAInstallPrompt({ onClose }: PWAInstallPromptProps): React.ReactNode {
+export default function PWAInstallPrompt({ onClose }: PWAInstallPromptProps): ReactElement | null {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
@@ -27,6 +28,12 @@ export default function PWAInstallPrompt({ onClose }: PWAInstallPromptProps): Re
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [onClose]);
 
   if (!isInstallable) {
     return null;

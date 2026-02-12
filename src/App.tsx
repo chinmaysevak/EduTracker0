@@ -328,14 +328,20 @@ function App() {
       </CommandDialog>
 
       {/* Desktop Sidebar */}
-      <aside className={`hidden lg:flex flex-col fixed h-full z-50 glass border-r-0 transition-all duration-300 custom-scrollbar ${
+      <aside className={`hidden lg:flex flex-col sticky top-0 h-screen z-50 glass border-r-0 transition-all duration-300 custom-scrollbar relative ${
         isSidebarCollapsed ? 'w-16' : 'w-64'
       }`}>
         {/* Logo and Collapse Button */}
-        <div className="flex items-center justify-between p-4">
+        <div className={`flex items-center justify-between flex-shrink-0 relative z-10 pointer-events-none ${
+          isSidebarCollapsed ? 'p-3' : 'p-4'
+        }`}>
           <button 
-            onClick={() => setActiveModule('dashboard')}
-            className="flex items-center gap-3"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveModule('dashboard');
+            }}
+            type="button"
+            className="flex items-center gap-3 w-fit max-w-full shrink-0 self-start pointer-events-auto"
           >
             {/* Professional Logo - Graduation Cap */}
             <div className="relative flex-shrink-0">
@@ -361,7 +367,7 @@ function App() {
             variant="ghost"
             size="icon"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="w-8 h-8 rounded-lg flex-shrink-0 hover:bg-muted/50"
+            className="w-8 h-8 rounded-lg flex-shrink-0 hover:bg-muted/50 pointer-events-auto"
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${
@@ -371,7 +377,9 @@ function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className={`flex-1 space-y-1 overflow-y-auto custom-scrollbar relative z-20 ${
+          isSidebarCollapsed ? 'px-2' : 'px-3'
+        }`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeModule === item.id;
@@ -379,7 +387,9 @@ function App() {
               <button
                 key={item.id}
                 onClick={() => setActiveModule(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${
+                className={`w-full flex items-center rounded-xl transition-all duration-200 ${
+                  isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5 text-left'
+                } ${
                   isActive
                     ? 'bg-primary text-primary-foreground font-medium shadow-md'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -399,7 +409,9 @@ function App() {
         </nav>
 
         {/* Bottom Actions */}
-        <div className="p-3 border-t border-border/50 space-y-2">
+        <div className={`border-t border-border/50 space-y-2 relative z-20 ${
+          isSidebarCollapsed ? 'p-2' : 'p-3'
+        }`}>
           {!isSidebarCollapsed && userName && (
             <div className="px-3 py-2 rounded-xl bg-muted/50 border border-border/50 mb-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Signed in as</p>
@@ -454,7 +466,7 @@ function App() {
 
         {/* Daily Quote - Only show when not collapsed */}
         {!isSidebarCollapsed && (
-          <div className="px-3 pb-3">
+          <div className="px-3 pb-3 relative z-20">
             <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
               <div className="flex items-center gap-2 mb-2">
                 <Quote className="w-3 h-3 text-muted-foreground" />
@@ -622,9 +634,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ${
-        isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-      }`}>
+      <main className="flex-1 transition-all duration-300">
         {/* Header with Date & Time */}
         <header className={`sticky top-0 z-40 transition-all duration-200 ${
           isScrolled ? 'glass shadow-sm' : 'bg-transparent'
@@ -734,7 +744,7 @@ function App() {
         </header>
 
         {/* Page Content */}
-        <div className="p-6 max-w-6xl mx-auto min-h-[calc(100vh-12rem)]">
+        <div className="p-6 w-full min-h-[calc(100vh-12rem)]">
           {renderModule()}
         </div>
 

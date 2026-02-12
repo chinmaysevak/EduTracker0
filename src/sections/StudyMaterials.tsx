@@ -28,27 +28,33 @@ import { toast } from 'sonner';
 import type { StudyMaterial } from '@/types';
 
 const materialTypeConfig = {
-  note: { 
-    label: 'Note', 
-    icon: StickyNote, 
+  note: {
+    label: 'Note',
+    icon: StickyNote,
     gradient: 'from-amber-400 to-orange-500',
     bgClass: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
   },
-  pdf: { 
-    label: 'PDF', 
-    icon: File, 
+  pdf: {
+    label: 'PDF',
+    icon: File,
     gradient: 'from-rose-400 to-red-500',
     bgClass: 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'
   },
-  link: { 
-    label: 'Link', 
-    icon: Link2, 
+  link: {
+    label: 'Link',
+    icon: Link2,
     gradient: 'from-cyan-400 to-blue-500',
     bgClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400'
   },
 };
 
-export default function StudyMaterials() {
+// ... imports
+
+interface StudyMaterialsProps {
+  onStudy?: (materialId: string) => void;
+}
+
+export default function StudyMaterials({ onStudy }: StudyMaterialsProps) {
   const { subjects } = useSubjects();
   const { materials, addMaterial, updateMaterial, deleteMaterial } = useStudyMaterials();
 
@@ -62,13 +68,14 @@ export default function StudyMaterials() {
     subjectId: '',
     title: '',
     type: 'note' as 'note' | 'pdf' | 'link',
-    content: ''
+    content: '',
+    file: null as File | null
   });
 
   const filteredMaterials = materials.filter(m => {
     const matchesSubject = selectedSubject === 'all' || m.subjectId === selectedSubject;
     const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         m.content.toLowerCase().includes(searchQuery.toLowerCase());
+      m.content.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSubject && matchesSearch;
   });
 
@@ -80,16 +87,27 @@ export default function StudyMaterials() {
     return subjects.find(s => s.id === subjectId)?.color || '#6b7280';
   };
 
-  const handleAddMaterial = () => {
-    if (formData.title.trim() && formData.content.trim() && formData.subjectId) {
-      addMaterial({
+  const handleAddMaterial = async () => {
+    if (formData.subjectId && formData.title.trim()) {
+      if (formData.type === 'pdf' && !formData.file) {
+        toast.error('Please upload a PDF file');
+        return;
+      }
+
+      const content = formData.type === 'pdf' ? formData.file?.name || 'Untitled PDF' : formData.content.trim();
+
+      await addMaterial({
         subjectId: formData.subjectId,
         title: formData.title.trim(),
         type: formData.type,
-        content: formData.content.trim()
-      });
-      setFormData({ subjectId: '', title: '', type: 'note', content: '' });
+        content: content
+      }, formData.file || undefined);
+
+      setFormData({ subjectId: '', title: '', type: 'note', content: '', file: null });
       setIsAddDialogOpen(false);
+      toast.success('Material added successfully');
+    } else {
+      toast.error('Please fill in all required fields');
     }
   };
 
@@ -101,7 +119,8 @@ export default function StudyMaterials() {
         content: formData.content.trim()
       });
       setEditingMaterial(null);
-      setFormData({ subjectId: '', title: '', type: 'note', content: '' });
+      setEditingMaterial(null);
+      setFormData({ subjectId: '', title: '', type: 'note', content: '', file: null });
     }
   };
 
@@ -111,7 +130,8 @@ export default function StudyMaterials() {
       subjectId: material.subjectId,
       title: material.title,
       type: material.type,
-      content: material.content
+      content: material.content,
+      file: null
     });
   };
 
@@ -119,9 +139,9 @@ export default function StudyMaterials() {
     switch (material.type) {
       case 'link':
         return (
-          <a 
-            href={material.content} 
-            target="_blank" 
+          <a
+            href={material.content}
+            target="_blank"
             rel="noopener noreferrer"
             className="text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 break-all text-sm"
           >
@@ -161,7 +181,7 @@ export default function StudyMaterials() {
           <h2 className="text-3xl font-bold gradient-text">Study Materials</h2>
           <p className="text-muted-foreground mt-1">Organize your notes, PDFs, and learning resources</p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="btn-gradient rounded-xl gap-2">
@@ -192,7 +212,7 @@ export default function StudyMaterials() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium">Title</Label>
                 <Input
@@ -202,7 +222,7 @@ export default function StudyMaterials() {
                   className="mt-1.5 rounded-xl h-12"
                 />
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium">Type</Label>
                 <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v as 'note' | 'pdf' | 'link' })}>
@@ -216,29 +236,46 @@ export default function StudyMaterials() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium">
-                  {formData.type === 'link' ? 'URL' : formData.type === 'pdf' ? 'PDF Name' : 'Content'}
+                  {formData.type === 'link' ? 'URL' : formData.type === 'pdf' ? 'PDF File' : 'Content'}
                 </Label>
                 {formData.type === 'note' ? (
                   <Textarea
                     value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, content: e.target.value })}
                     placeholder="Enter your notes..."
                     rows={5}
                     className="mt-1.5 rounded-xl"
                   />
+                ) : formData.type === 'pdf' ? (
+                  <div className="mt-1.5">
+                    <Input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setFormData({ ...formData, file, content: file.name });
+                        }
+                      }}
+                      className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                    />
+                    {formData.file && (
+                      <p className="text-xs text-muted-foreground mt-1">Selected: {formData.file.name}</p>
+                    )}
+                  </div>
                 ) : (
                   <Input
                     value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    placeholder={formData.type === 'link' ? 'https://...' : 'Enter PDF name'}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, content: e.target.value })}
+                    placeholder="https://..."
                     className="mt-1.5 rounded-xl h-12"
                   />
                 )}
               </div>
-              
+
               <Button onClick={handleAddMaterial} className="w-full btn-gradient rounded-xl h-12">
                 Add Material
               </Button>
@@ -260,7 +297,7 @@ export default function StudyMaterials() {
             <p className="text-sm text-muted-foreground">Total Materials</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -272,7 +309,7 @@ export default function StudyMaterials() {
             <p className="text-sm text-muted-foreground">Notes</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -284,7 +321,7 @@ export default function StudyMaterials() {
             <p className="text-sm text-muted-foreground">PDFs</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -334,8 +371,8 @@ export default function StudyMaterials() {
 
         {['all', 'notes', 'pdfs', 'links'].map((tabValue) => {
           const typeMap: Record<string, string> = { notes: 'note', pdfs: 'pdf', links: 'link' };
-          const tabMaterials = tabValue === 'all' 
-            ? filteredMaterials 
+          const tabMaterials = tabValue === 'all'
+            ? filteredMaterials
             : filteredMaterials.filter(m => m.type === typeMap[tabValue]);
 
           return (
@@ -356,7 +393,7 @@ export default function StudyMaterials() {
                     const TypeIcon = materialTypeConfig[material.type].icon;
                     const bgClass = materialTypeConfig[material.type].bgClass;
                     const subjectColor = getSubjectColor(material.subjectId);
-                    
+
                     return (
                       <Card key={material.id} className="card-modern card-hover border-0 overflow-hidden">
                         <div className="h-1.5" style={{ backgroundColor: subjectColor }} />
@@ -385,16 +422,28 @@ export default function StudyMaterials() {
                           <div className="bg-muted/50 rounded-xl p-4">
                             {renderMaterialContent(material)}
                           </div>
-                          <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            Added {new Date(material.createdAt).toLocaleDateString()}
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              {new Date(material.createdAt).toLocaleDateString()}
+                            </div>
+                            <Button size="sm" className="rounded-lg h-8 px-3" onClick={() => {
+                              if (onStudy) {
+                                onStudy(material.id);
+                              } else {
+                                toast.info('Starting study session...', { description: `Opening ${material.title}` });
+                              }
+                            }}>
+                              Start Study
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
                     );
                   })}
                 </div>
-              )}
+              )
+              }
             </TabsContent>
           );
         })}
@@ -466,6 +515,6 @@ export default function StudyMaterials() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 }

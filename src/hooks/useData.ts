@@ -4,40 +4,54 @@
 
 import { useLocalStorage } from './useLocalStorage';
 import { defaultTimetable, defaultCustomTimes, getSubjectColor, generateTimetableWithTimes, extractSubjects } from '@/config/timetable';
-import type { 
-  Subject, 
-  DailyAttendance, 
-  StudyMaterial, 
-  YouTubePlaylist, 
-  StudyTask, 
+import type {
+  Subject,
+  DailyAttendance,
+  StudyMaterial,
+  YouTubePlaylist,
+  StudyTask,
   CourseProgress,
   AttendanceStatus,
-  TimetableSlot
+  TimetableSlot,
+  Topic,
+  FocusSessionLog
 } from '@/types';
+
+// Extend types locally if not yet updated in types/index.ts
+// Ideally we should update types/index.ts, but for now we patch here to avoid breaking content
+// We will update types/index.ts in a separate step to ensure consistency.
 
 // ============================================
 // Subjects Hook - With Add/Remove functionality
 // ============================================
-export function useSubjects(timetableData?: Record<string, string[]>) {
-  const initialSubjects = timetableData ? extractSubjects(timetableData) : 
+export function useSubjects(timetableData?: Record<string, string[]>, userId?: string) {
+  const initialSubjects = timetableData ? extractSubjects(timetableData) :
     ["Mathematical Aptitude", "Lab On Advance Java", "Optimization Technique", "Cyber Security", "HTML CSS", "Advance Java", "Computer Network", "Lab On HTML"];
-  
+
   const defaultSubjects: Subject[] = initialSubjects.map((name: string, index: number) => ({
     id: `sub-${index + 1}`,
     name,
-    color: getSubjectColor(name)
+    color: getSubjectColor(name),
+    difficulty: 3,
+    totalTopics: 10
   }));
 
-  const [subjects, setSubjects] = useLocalStorage<Subject[]>('edu-tracker-subjects', defaultSubjects);
+  const [subjects, setSubjects] = useLocalStorage<Subject[]>('edu-tracker-subjects', defaultSubjects, userId);
 
-  const addSubject = (name: string): string => {
+  const addSubject = (name: string, difficulty: number = 3): string => {
     const newSubject: Subject = {
       id: `sub-${Date.now()}`,
       name: name.trim(),
-      color: getSubjectColor(name.trim())
+      color: getSubjectColor(name.trim()),
+      difficulty,
+      totalTopics: 10
     };
     setSubjects(prev => [...prev, newSubject]);
     return newSubject.id;
+  };
+
+  const updateSubject = (id: string, updates: Partial<Subject>) => {
+    setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
   const removeSubject = (id: string) => {
@@ -47,19 +61,133 @@ export function useSubjects(timetableData?: Record<string, string[]>) {
   const getSubjectById = (id: string) => subjects.find(s => s.id === id);
   const getSubjectByName = (name: string) => subjects.find(s => s.name === name);
 
-  return { subjects, addSubject, removeSubject, getSubjectById, getSubjectByName };
+  return { subjects, addSubject, updateSubject, removeSubject, getSubjectById, getSubjectByName };
 }
+
+// ... existing code ...
+
+// ============================================
+// User Profile Hook (Gamification)
+// ============================================
+import type { UserProfile, Badge } from '@/types';
+
+export function useUserProfile(userId?: string) {
+  const defaultProfile: UserProfile = {
+    name: 'Student',
+    xp: 0,
+    level: 1,
+    currentStreak: 0,
+    longestStreak: 0,
+    lastStudyDate: '',
+    badges: []
+  };
+
+  const [profile, setProfile] = useLocalStorage<UserProfile>('edu-tracker-profile', defaultProfile, userId);
+
+  const addXP = (amount: number) => {
+    setProfile(prev => {
+      const newXP = prev.xp + amount;
+      // Level up every 1000 XP * level
+      const xpNeeded = prev.level * 1000;
+      let newLevel = prev.level;
+      if (newXP >= xpNeeded) {
+        newLevel += 1;
+        // Optionally trigger level up notification here
+      }
+      return { ...prev, xp: newXP, level: newLevel };
+    });
+  };
+
+  const updateStreak = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setProfile(prev => {
+      if (prev.lastStudyDate === today) return prev; // Already updated today
+
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      let newStreak = prev.currentStreak;
+
+      if (prev.lastStudyDate === yesterday) {
+        newStreak += 1;
+      } else {
+        newStreak = 1; // Reset streak
+      }
+
+      return {
+        ...prev,
+        currentStreak: newStreak,
+        longestStreak: Math.max(newStreak, prev.longestStreak),
+        lastStudyDate: today
+      };
+    });
+  };
+
+  const awardBadge = (badge: Badge) => {
+    setProfile(prev => {
+      if (prev.badges.some(b => b.id === badge.id)) return prev;
+      return { ...prev, badges: [...prev.badges, badge] };
+    });
+  };
+
+  return { profile, addXP, updateStreak, awardBadge, setProfile };
+}
+
+// ============================================
+// Academic Insights Hook
+// ============================================
+import { calculateAttendanceSafeZone, calculateSubjectPriority, calculateExamReadiness } from '@/lib/academicMath';
+
+export function useAcademicInsights() {
+  const { subjects } = useSubjects();
+  const { calculateSubjectAttendance } = useAttendance();
+  const { tasks } = useStudyTasks();
+
+  const getSubjectInsights = (subjectId: string) => {
+    const subject = subjects.find(s => s.id === subjectId);
+    if (!subject) return null;
+
+    const attendance = calculateSubjectAttendance(subjectId);
+    const attendanceAnalysis = calculateAttendanceSafeZone(attendance.present, attendance.total);
+
+    const priorityScore = calculateSubjectPriority(subject, tasks);
+
+    // Calculate pseudo 'assignments completed' for readiness
+    const subjectTasks = tasks.filter(t => t.subjectId === subjectId);
+    const completedTasks = subjectTasks.filter(t => t.status === 'completed').length;
+
+    const readiness = calculateExamReadiness(
+      subject,
+      attendance.percentage,
+      completedTasks,
+      subjectTasks.length
+    );
+
+    return {
+      attendanceAnalysis,
+      priorityScore,
+      readiness
+    };
+  };
+
+  const getTopPrioritySubjects = () => {
+    return subjects
+      .map(s => ({ subject: s, score: calculateSubjectPriority(s, tasks) }))
+      .sort((a, b) => b.score - a.score);
+  };
+
+  return { getSubjectInsights, getTopPrioritySubjects };
+}
+
 
 // ============================================
 // Attendance Hook - Per-subject tracking
 // ============================================
-export function useAttendance() {
-  const [attendanceData, setAttendanceData] = useLocalStorage<DailyAttendance[]>('edu-tracker-attendance-v2', []);
+export function useAttendance(userId?: string) {
+  const [attendanceData, setAttendanceData] = useLocalStorage<DailyAttendance[]>('edu-tracker-attendance-v2', [], userId);
 
   const markAttendance = (date: string, subjectId: string, status: AttendanceStatus) => {
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) {
         if (status === null) return prev;
         return [...prev, { date, subjects: { [subjectId]: status } }];
@@ -67,7 +195,7 @@ export function useAttendance() {
 
       const updated = [...prev];
       const dayData = { ...updated[dayIndex] };
-      
+
       if (status === null) {
         const { [subjectId]: _, ...rest } = dayData.subjects;
         dayData.subjects = rest;
@@ -91,12 +219,12 @@ export function useAttendance() {
       startTime,
       endTime,
       status: null as AttendanceStatus,
-      color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
+      color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
     };
 
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) {
         return [...prev, { date, subjects: {}, extraClasses: [newExtraClass] }];
       }
@@ -115,18 +243,18 @@ export function useAttendance() {
   const removeExtraClass = (date: string, extraClassId: string) => {
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) return prev;
 
       const updated = [...prev];
       const dayData = { ...updated[dayIndex] };
       dayData.extraClasses = (dayData.extraClasses || []).filter(ec => ec.id !== extraClassId);
-      
+
       // Remove day if no subjects and no extra classes
       if (Object.keys(dayData.subjects).length === 0 && dayData.extraClasses.length === 0) {
         return prev.filter(d => d.date !== date);
       }
-      
+
       updated[dayIndex] = dayData;
       return updated;
     });
@@ -136,18 +264,18 @@ export function useAttendance() {
   const markExtraClassAttendance = (date: string, extraClassId: string, status: AttendanceStatus) => {
     setAttendanceData(prev => {
       const dayIndex = prev.findIndex(d => d.date === date);
-      
+
       if (dayIndex === -1) return prev;
 
       const updated = [...prev];
       const dayData = { ...updated[dayIndex] };
-      
+
       if (!dayData.extraClasses) return prev;
-      
-      dayData.extraClasses = dayData.extraClasses.map(ec => 
+
+      dayData.extraClasses = dayData.extraClasses.map(ec =>
         ec.id === extraClassId ? { ...ec, status } : ec
       );
-      
+
       updated[dayIndex] = dayData;
       return updated;
     });
@@ -172,9 +300,9 @@ export function useAttendance() {
   const calculateSubjectAttendance = (subjectId: string): { percentage: number; present: number; total: number } => {
     const relevantDays = attendanceData.filter(day => day.subjects[subjectId] !== undefined);
     const validRecords = relevantDays.filter(day => day.subjects[subjectId] !== 'cancelled');
-    
+
     if (validRecords.length === 0) return { percentage: 0, present: 0, total: 0 };
-    
+
     const presentCount = validRecords.filter(day => day.subjects[subjectId] === 'present').length;
     return {
       percentage: Math.round((presentCount / validRecords.length) * 100),
@@ -234,9 +362,9 @@ export function useAttendance() {
 // ============================================
 // Timetable Hook - Now editable with localStorage
 // ============================================
-export function useTimetable() {
-  const [timetableData, setTimetableData] = useLocalStorage<Record<string, string[]>>('edu-tracker-timetable-data', defaultTimetable);
-  const [customTimes, setCustomTimes] = useLocalStorage<Record<string, { startTime: string; endTime: string }[]>>('edu-tracker-timetable-times', defaultCustomTimes);
+export function useTimetable(userId?: string) {
+  const [timetableData, setTimetableData] = useLocalStorage<Record<string, string[]>>('edu-tracker-timetable-data', defaultTimetable, userId);
+  const [customTimes, setCustomTimes] = useLocalStorage<Record<string, { startTime: string; endTime: string }[]>>('edu-tracker-timetable-times', defaultCustomTimes, userId);
 
   const fullTimetable = generateTimetableWithTimes(timetableData, customTimes);
 
@@ -271,7 +399,7 @@ export function useTimetable() {
       ...prev,
       [day]: [...(prev[day] || []), subject]
     }));
-    
+
     setCustomTimes(prev => ({
       ...prev,
       [day]: [...(prev[day] || []), { startTime, endTime }]
@@ -284,7 +412,7 @@ export function useTimetable() {
       ...prev,
       [day]: prev[day]?.filter((_, i) => i !== index) || []
     }));
-    
+
     setCustomTimes(prev => ({
       ...prev,
       [day]: prev[day]?.filter((_, i) => i !== index) || []
@@ -299,13 +427,13 @@ export function useTimetable() {
         [day]: prev[day]?.map((s, i) => i === index ? updates.subject! : s) || []
       }));
     }
-    
+
     if (updates.startTime !== undefined || updates.endTime !== undefined) {
       setCustomTimes(prev => ({
         ...prev,
-        [day]: prev[day]?.map((t, i) => i === index ? { 
-          startTime: updates.startTime || t.startTime, 
-          endTime: updates.endTime || t.endTime 
+        [day]: prev[day]?.map((t, i) => i === index ? {
+          startTime: updates.startTime || t.startTime,
+          endTime: updates.endTime || t.endTime
         } : t) || []
       }));
     }
@@ -333,16 +461,30 @@ export function useTimetable() {
 }
 
 // ============================================
-// Study Materials Hook
+// Study Materials Hook - With IndexedDB
 // ============================================
-export function useStudyMaterials() {
-  const [materials, setMaterials] = useLocalStorage<StudyMaterial[]>('edu-tracker-materials', []);
+import { saveFile, deleteFile as deleteDbFile } from '@/lib/db';
 
-  const addMaterial = (material: Omit<StudyMaterial, 'id' | 'createdAt'>) => {
+export function useStudyMaterials(userId?: string) {
+  const [materials, setMaterials] = useLocalStorage<StudyMaterial[]>('edu-tracker-materials', [], userId);
+
+  const addMaterial = async (material: Omit<StudyMaterial, 'id' | 'createdAt'>, file?: File) => {
+    let fileId = undefined;
+
+    if (material.type === 'pdf' && file) {
+      try {
+        fileId = await saveFile(file);
+      } catch (error) {
+        console.error("Failed to save file to DB", error);
+        return; // Handle error appropriately in UI
+      }
+    }
+
     const newMaterial: StudyMaterial = {
       ...material,
       id: `mat-${Date.now()}`,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      fileId // Store reference to DB file
     };
     setMaterials(prev => [...prev, newMaterial]);
   };
@@ -351,7 +493,15 @@ export function useStudyMaterials() {
     setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
   };
 
-  const deleteMaterial = (id: string) => {
+  const deleteMaterial = async (id: string) => {
+    const material = materials.find(m => m.id === id);
+    if (material?.fileId) {
+      try {
+        await deleteDbFile(material.fileId);
+      } catch (e) {
+        console.error("Failed to delete file from DB", e);
+      }
+    }
     setMaterials(prev => prev.filter(m => m.id !== id));
   };
 
@@ -371,8 +521,8 @@ export function useStudyMaterials() {
 // ============================================
 // YouTube Playlists Hook
 // ============================================
-export function usePlaylists() {
-  const [playlists, setPlaylists] = useLocalStorage<YouTubePlaylist[]>('edu-tracker-playlists', []);
+export function usePlaylists(userId?: string) {
+  const [playlists, setPlaylists] = useLocalStorage<YouTubePlaylist[]>('edu-tracker-playlists', [], userId);
 
   const addPlaylist = (playlist: Omit<YouTubePlaylist, 'id' | 'addedAt'>) => {
     const newPlaylist: YouTubePlaylist = {
@@ -407,8 +557,8 @@ export function usePlaylists() {
 // ============================================
 // Study Tasks Hook
 // ============================================
-export function useStudyTasks() {
-  const [tasks, setTasks] = useLocalStorage<StudyTask[]>('edu-tracker-tasks', []);
+export function useStudyTasks(userId?: string) {
+  const [tasks, setTasks] = useLocalStorage<StudyTask[]>('edu-tracker-tasks', [], userId);
 
   const addTask = (task: Omit<StudyTask, 'id' | 'createdAt' | 'status'>) => {
     const newTask: StudyTask = {
@@ -429,9 +579,17 @@ export function useStudyTasks() {
   };
 
   const toggleTaskStatus = (id: string) => {
-    setTasks(prev => prev.map(t => 
-      t.id === id ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } : t
-    ));
+    setTasks(prev => prev.map(t => {
+      if (t.id === id) {
+        const newStatus = t.status === 'completed' ? 'pending' : 'completed';
+        return {
+          ...t,
+          status: newStatus,
+          completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined
+        };
+      }
+      return t;
+    }));
   };
 
   const getPendingTasks = () => tasks.filter(t => t.status === 'pending');
@@ -461,13 +619,13 @@ export function useStudyTasks() {
 // ============================================
 // Course Progress Hook
 // ============================================
-export function useCourseProgress() {
-  const [progressData, setProgressData] = useLocalStorage<CourseProgress[]>('edu-tracker-progress', []);
+export function useCourseProgress(userId?: string) {
+  const [progressData, setProgressData] = useLocalStorage<CourseProgress[]>('edu-tracker-progress', [], userId);
 
   const setProgress = (subjectId: string, progress: Partial<CourseProgress>) => {
     setProgressData(prev => {
       const index = prev.findIndex(p => p.subjectId === subjectId);
-      
+
       if (index === -1) {
         return [...prev, {
           subjectId,
@@ -542,8 +700,8 @@ const defaultNotifications: import('@/types').Notification[] = [
   }
 ];
 
-export function useNotifications() {
-  const [notifications, setNotifications] = useLocalStorage<import('@/types').Notification[]>('edu-tracker-notifications', defaultNotifications);
+export function useNotifications(userId?: string) {
+  const [notifications, setNotifications] = useLocalStorage<import('@/types').Notification[]>('edu-tracker-notifications', defaultNotifications, userId);
 
   const addNotification = (notification: Omit<import('@/types').Notification, 'id' | 'createdAt' | 'read'>) => {
     const newNotification: import('@/types').Notification = {
@@ -581,7 +739,7 @@ export function useNotifications() {
   ) => {
     const newNotifications: Omit<import('@/types').Notification, 'id' | 'createdAt' | 'read'>[] = [];
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Check for overdue tasks
     const overdueTasks = tasks.filter(t => t.status === 'pending' && t.targetDate < today);
     if (overdueTasks.length > 0) {
@@ -609,7 +767,7 @@ export function useNotifications() {
       const subjectAttendance = attendanceData.filter(day => day.subjects && day.subjects[subject.id] !== undefined);
       const present = subjectAttendance.filter(day => day.subjects[subject.id] === 'present').length;
       const total = subjectAttendance.filter(day => day.subjects[subject.id] !== 'cancelled').length;
-      
+
       if (total > 0) {
         const percentage = Math.round((present / total) * 100);
         if (percentage < 60 && total >= 5) {
@@ -636,4 +794,60 @@ export function useNotifications() {
     clearAll,
     generateSmartNotifications
   };
+}
+
+// ============================================
+// Topic Tracking Hook
+// ============================================
+export function useTopics() {
+  const [topics, setTopics] = useLocalStorage<Topic[]>('edu-tracker-topics', []);
+
+  const addTopic = (topic: Omit<Topic, 'id' | 'status'>) => {
+    const newTopic: Topic = {
+      ...topic,
+      id: `topic-${Date.now()}`,
+      status: 'pending'
+    };
+    setTopics(prev => [...prev, newTopic]);
+  };
+
+  const updateTopic = (id: string, updates: Partial<Topic>) => {
+    setTopics(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const deleteTopic = (id: string) => {
+    setTopics(prev => prev.filter(t => t.id !== id));
+  };
+
+  const getTopicsForSubject = (subjectId: string) => {
+    return topics.filter(t => t.subjectId === subjectId);
+  };
+
+  return { topics, addTopic, updateTopic, deleteTopic, getTopicsForSubject };
+}
+
+// ============================================
+// Focus History Hook
+// ============================================
+export function useFocusHistory() {
+  const [history, setHistory] = useLocalStorage<FocusSessionLog[]>('edu-tracker-focus-history', []);
+
+  const logSession = (session: Omit<FocusSessionLog, 'id'>) => {
+    const newLog: FocusSessionLog = {
+      ...session,
+      id: `focus-${Date.now()}`
+    };
+    setHistory(prev => [newLog, ...prev]);
+  };
+
+  const getHistoryForSubject = (subjectId: string) => {
+    return history.filter(h => h.subjectId === subjectId);
+  };
+
+  const getTotalStudyTime = (subjectId?: string) => {
+    const relevantLogs = subjectId ? history.filter(h => h.subjectId === subjectId) : history;
+    return relevantLogs.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+  };
+
+  return { history, logSession, getHistoryForSubject, getTotalStudyTime };
 }

@@ -24,6 +24,9 @@ export interface Subject {
   id: string;
   name: string;
   color?: string;
+  difficulty?: number; // 1-5 scale (1=Easy, 5=Hard). Default 3.
+  totalTopics?: number;
+  examDate?: string; // ISO date string
 }
 
 // Study Material Types
@@ -33,29 +36,74 @@ export interface StudyMaterial {
   title: string;
   type: 'note' | 'pdf' | 'link';
   content: string;
+  fileId?: string; // Reference to IndexedDB file
   createdAt: string;
 }
 
 // YouTube Playlist Types
 export interface YouTubePlaylist {
   id: string;
-  name: string;
   subjectId: string;
+  title: string;
   url: string;
-  description?: string;
+  thumbnail?: string;
+  channelName?: string;
+  videoCount?: number;
   addedAt: string;
 }
 
 // Study Planner Types
 export type TaskStatus = 'pending' | 'completed';
+export type TaskType = 'study' | 'assignment' | 'exam' | 'project';
+export type RecurrenceType = 'none' | 'daily' | 'weekly';
 
 export interface StudyTask {
   id: string;
-  subjectId: string;
+  subjectId?: string;
   description: string;
   targetDate: string;
-  status: TaskStatus;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'completed';
+  type?: TaskType;
+  isRecurring?: boolean;
+  recurrencePattern?: RecurrenceType;
+  recurringDays?: number[]; // 0-6 for weekly
   createdAt: string;
+  marks?: number; // Weight for priority
+  estimatedMinutes?: number; // For scheduling
+  autoPriorityScore?: number; // Calculated dynamic score
+  completedAt?: string; // Timestamp when task was completed
+}
+
+// Gamification & User Profile
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt: string;
+}
+
+export interface UserProfile {
+  name: string;
+  xp: number;
+  level: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastStudyDate: string; // For streak calculation
+  badges: Badge[];
+  lastStudiedSubjectId?: string;
+  lastSessionEnd?: string;
+}
+
+// Focus Mode
+export interface FocusSession {
+  id: string;
+  subjectId?: string;
+  startTime: string;
+  duration: number; // in minutes
+  completed: boolean;
+  notes?: string;
 }
 
 // Course Progress Types
@@ -67,14 +115,15 @@ export interface CourseProgress {
 }
 
 // Navigation Types
-export type ModuleType = 
+export type ModuleType =
   | 'dashboard'
   | 'attendance'
   | 'materials'
   | 'learning-hub'
   | 'planner'
   | 'progress'
-  | 'settings';
+  | 'settings'
+  | 'focus';
 
 // Timetable Types
 export interface TimetableSlot {
@@ -116,4 +165,23 @@ export interface EduTrackerExport {
     timetable: Record<string, string[]>;
     customTimes: Record<string, { startTime: string; endTime: string }[]>;
   };
+}
+// Topic Tracking for "Backlog Detection"
+export interface Topic {
+  id: string;
+  subjectId: string;
+  name: string;
+  status: 'pending' | 'revision' | 'mastered';
+  difficulty: 'easy' | 'medium' | 'hard'; // Weight: 1, 2, 3
+  completedDate?: string;
+}
+
+// Focus History for "Weekly Performance"
+export interface FocusSessionLog {
+  id: string;
+  subjectId: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  date: string; // YYYY-MM-DD
 }

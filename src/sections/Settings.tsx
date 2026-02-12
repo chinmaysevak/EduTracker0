@@ -3,10 +3,10 @@
 // ============================================
 
 import { useState, useRef } from 'react';
-import { 
-  Download, 
-  Upload, 
-  Trash2, 
+import {
+  Download,
+  Upload,
+  Trash2,
   FileText,
   AlertTriangle,
   CheckCircle
@@ -22,40 +22,47 @@ export default function Settings() {
   const { exportData, importData, clearAllData } = useImportExport();
   const [isImporting, setIsImporting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
     exportData();
   };
 
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.json')) {
-      alert('Please select a valid JSON file');
-      return;
-    }
+  const handleImport = async () => {
+    if (!selectedFile) return;
 
     setIsImporting(true);
     try {
-      const success = await importData(file);
+      const success = await importData(selectedFile, password);
       if (success) {
-        // Clear the file input
+        // Clear inputs
+        setSelectedFile(null);
+        setPassword('');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+      }
+    } catch (error: any) {
+      if (error.message === 'PASSWORD_REQUIRED') {
+        alert('This backup is encrypted. Please enter the password securely.');
+        // Maybe focus the password field?
+      } else if (error.message === 'INVALID_PASSWORD') {
+        alert('Incorrect password. Please try again.');
+      } else {
+        alert(`Import failed: ${error.message}`);
       }
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
       setIsClearing(true);
       try {
-        clearAllData();
+        await clearAllData();
       } finally {
         setIsClearing(false);
       }
@@ -87,8 +94,9 @@ export default function Settings() {
             <Alert>
               <FileText className="h-4 w-4" />
               <AlertDescription>
-                The exported file contains all your subjects, attendance records, study materials, 
+                The exported file contains all your subjects, attendance records, study materials,
                 playlists, tasks, progress tracking, notifications, and timetable settings.
+                <strong>Note: PDF files are stored separately and are NOT included in the export.</strong>
               </AlertDescription>
             </Alert>
             <Button onClick={handleExport} className="w-full sm:w-auto">
@@ -112,34 +120,65 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Warning:</strong> Importing data will replace all existing data. 
-                Consider exporting your current data first as a backup.
-              </AlertDescription>
-            </Alert>
-            
             <div className="space-y-2">
-              <Label htmlFor="import-file">Select JSON File</Label>
-              <Input
-                ref={fileInputRef}
-                id="import-file"
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                disabled={isImporting}
-              />
+              <Label htmlFor="import-file">Select Backup File (JSON, ZIP, or AJBAK)</Label>
+              <div className="flex gap-2">
+                <Input
+                  ref={fileInputRef}
+                  id="import-file"
+                  type="file"
+                  accept=".json,.zip,.ajbak"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (!file.name.match(/\.(json|zip|ajbak)$/i)) {
+                        alert('Please select a valid backup file (JSON, ZIP, or AJBAK)');
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        return;
+                      }
+                      setSelectedFile(file);
+                    }
+                  }}
+                  disabled={isImporting}
+                />
+                {selectedFile && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setPassword('');
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-            
-            <Button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
-              variant="outline"
+
+            {selectedFile && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                <Label htmlFor="backup-password">Backup Password (if encrypted)</Label>
+                <Input
+                  id="backup-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password..."
+                  disabled={isImporting}
+                />
+              </div>
+            )}
+
+            <Button
+              onClick={handleImport}
+              disabled={isImporting || !selectedFile}
+              variant="default"
               className="w-full sm:w-auto"
             >
               <Upload className="h-4 w-4 mr-2" />
-              {isImporting ? 'Importing...' : 'Import Data'}
+              {isImporting ? 'Importing...' : 'Start Import'}
             </Button>
           </div>
         </CardContent>
@@ -161,12 +200,12 @@ export default function Settings() {
             <Alert className="border-red-200 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-700">
-                <strong>Danger Zone:</strong> This action cannot be undone. 
+                <strong>Danger Zone:</strong> This action cannot be undone.
                 All your data will be permanently deleted.
               </AlertDescription>
             </Alert>
-            
-            <Button 
+
+            <Button
               onClick={handleClearData}
               disabled={isClearing}
               variant="destructive"
@@ -190,19 +229,19 @@ export default function Settings() {
         <CardContent>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              <strong>Export:</strong> Creates a complete backup of all your data in JSON format. 
+              <strong>Export:</strong> Creates a complete backup of all your data in JSON format.
               This file can be used to restore your data on this device or import it to another device.
             </p>
             <p>
-              <strong>Import:</strong> Restores data from a previously exported file. 
+              <strong>Import:</strong> Restores data from a previously exported file.
               This will replace all existing data in the application.
             </p>
             <p>
-              <strong>File Format:</strong> Only JSON files exported from EduTracker can be imported. 
+              <strong>File Format:</strong> Only JSON files exported from EduTracker can be imported.
               The file includes version information to ensure compatibility.
             </p>
             <p>
-              <strong>Data Privacy:</strong> All data is stored locally in your browser. 
+              <strong>Data Privacy:</strong> All data is stored locally in your browser.
               No data is sent to external servers during export or import operations.
             </p>
           </div>

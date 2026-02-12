@@ -3,12 +3,12 @@
 // ============================================
 
 import { useState } from 'react';
-import { 
-  Plus, 
-  CheckCircle2, 
-  Circle, 
-  Trash2, 
-  Edit2, 
+import {
+  Plus,
+  CheckCircle2,
+  Circle,
+  Trash2,
+  Edit2,
   Clock,
   Filter,
   Search,
@@ -52,7 +52,10 @@ export default function StudyPlanner() {
   const [formData, setFormData] = useState({
     subjectId: '',
     description: '',
-    targetDate: new Date().toISOString().split('T')[0]
+    targetDate: new Date().toISOString().split('T')[0],
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    estimatedMinutes: '',
+    marks: ''
   });
 
   const filteredTasks = tasks.filter(t => {
@@ -85,10 +88,23 @@ export default function StudyPlanner() {
       addTask({
         subjectId: formData.subjectId,
         description: formData.description.trim(),
-        targetDate: formData.targetDate
+        targetDate: formData.targetDate,
+        priority: formData.priority,
+        estimatedMinutes: formData.estimatedMinutes ? parseInt(formData.estimatedMinutes) : undefined,
+        marks: formData.marks ? parseInt(formData.marks) : undefined
       });
-      setFormData({ subjectId: '', description: '', targetDate: new Date().toISOString().split('T')[0] });
+      setFormData({
+        subjectId: '',
+        description: '',
+        targetDate: new Date().toISOString().split('T')[0],
+        priority: 'medium',
+        estimatedMinutes: '',
+        marks: ''
+      });
       setIsAddDialogOpen(false);
+      toast.success('Task added successfully');
+    } else {
+      toast.error('Please fill in all required fields');
     }
   };
 
@@ -96,19 +112,33 @@ export default function StudyPlanner() {
     if (editingTask && formData.description.trim()) {
       updateTask(editingTask.id, {
         description: formData.description.trim(),
-        targetDate: formData.targetDate
+        targetDate: formData.targetDate,
+        priority: formData.priority,
+        estimatedMinutes: formData.estimatedMinutes ? parseInt(formData.estimatedMinutes) : undefined,
+        marks: formData.marks ? parseInt(formData.marks) : undefined
       });
       setEditingTask(null);
-      setFormData({ subjectId: '', description: '', targetDate: new Date().toISOString().split('T')[0] });
+      setFormData({
+        subjectId: '',
+        description: '',
+        targetDate: new Date().toISOString().split('T')[0],
+        priority: 'medium',
+        estimatedMinutes: '',
+        marks: ''
+      });
+      toast.success('Task updated');
     }
   };
 
   const openEditDialog = (task: StudyTask) => {
     setEditingTask(task);
     setFormData({
-      subjectId: task.subjectId,
+      subjectId: task.subjectId || '',
       description: task.description,
-      targetDate: task.targetDate
+      targetDate: task.targetDate,
+      priority: task.priority || 'medium',
+      estimatedMinutes: task.estimatedMinutes?.toString() || '',
+      marks: task.marks?.toString() || ''
     });
   };
 
@@ -120,7 +150,7 @@ export default function StudyPlanner() {
 
     if (dateStr === today.toISOString().split('T')[0]) return 'Today';
     if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Tomorrow';
-    
+
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -140,7 +170,7 @@ export default function StudyPlanner() {
           <h2 className="text-3xl font-bold gradient-text">Study Planner</h2>
           <p className="text-muted-foreground mt-1">Plan and track your study tasks</p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="btn-gradient rounded-xl gap-2">
@@ -171,7 +201,7 @@ export default function StudyPlanner() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium">Task Description</Label>
                 <Input
@@ -181,7 +211,32 @@ export default function StudyPlanner() {
                   className="mt-1.5 rounded-xl h-12"
                 />
               </div>
-              
+
+
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Est. Time (mins)</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 60"
+                    value={formData.estimatedMinutes}
+                    onChange={(e) => setFormData({ ...formData, estimatedMinutes: e.target.value })}
+                    className="mt-1.5 rounded-xl h-12"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Marks / Weight</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 100"
+                    value={formData.marks}
+                    onChange={(e) => setFormData({ ...formData, marks: e.target.value })}
+                    className="mt-1.5 rounded-xl h-12"
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label className="text-sm font-medium">Target Date</Label>
                 <Input
@@ -191,7 +246,21 @@ export default function StudyPlanner() {
                   className="mt-1.5 rounded-xl h-12"
                 />
               </div>
-              
+
+              <div>
+                <Label className="text-sm font-medium">Priority</Label>
+                <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as 'low' | 'medium' | 'high' })}>
+                  <SelectTrigger className="mt-1.5 rounded-xl h-12">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button onClick={handleAddTask} className="w-full btn-gradient rounded-xl h-12">
                 Add Task
               </Button>
@@ -213,7 +282,7 @@ export default function StudyPlanner() {
             <p className="text-sm text-muted-foreground">Total Tasks</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -225,7 +294,7 @@ export default function StudyPlanner() {
             <p className="text-sm text-muted-foreground">Pending</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -237,7 +306,7 @@ export default function StudyPlanner() {
             <p className="text-sm text-muted-foreground">Completed</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -249,7 +318,7 @@ export default function StudyPlanner() {
             <p className="text-sm text-muted-foreground">Overdue</p>
           </CardContent>
         </Card>
-        
+
         <Card className="card-modern card-hover border-0">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
@@ -309,9 +378,9 @@ export default function StudyPlanner() {
           ) : (
             <div className="space-y-3">
               {pendingTasks.sort((a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()).map(task => (
-                <TaskRow 
-                  key={task.id} 
-                  task={task} 
+                <TaskRow
+                  key={task.id}
+                  task={task}
                   onToggle={() => toggleTaskStatus(task.id)}
                   onEdit={() => openEditDialog(task)}
                   onDelete={() => setTaskToDelete(task)}
@@ -340,9 +409,9 @@ export default function StudyPlanner() {
           ) : (
             <div className="space-y-3">
               {completedTasks.sort((a, b) => new Date(b.targetDate).getTime() - new Date(a.targetDate).getTime()).map(task => (
-                <TaskRow 
-                  key={task.id} 
-                  task={task} 
+                <TaskRow
+                  key={task.id}
+                  task={task}
                   onToggle={() => toggleTaskStatus(task.id)}
                   onEdit={() => openEditDialog(task)}
                   onDelete={() => setTaskToDelete(task)}
@@ -372,6 +441,19 @@ export default function StudyPlanner() {
             <div>
               <Label className="text-sm font-medium">Target Date</Label>
               <Input type="date" value={formData.targetDate} onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })} className="mt-1.5 rounded-xl h-12" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Priority</Label>
+              <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as 'low' | 'medium' | 'high' })}>
+                <SelectTrigger className="mt-1.5 rounded-xl h-12">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-3">
               <Button onClick={handleUpdateTask} className="flex-1 btn-gradient rounded-xl h-12">Update</Button>
@@ -407,7 +489,7 @@ export default function StudyPlanner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 }
 
@@ -425,10 +507,10 @@ interface TaskRowProps {
 
 function TaskRow({ task, onToggle, onEdit, onDelete, isOverdue, isDueToday, getSubjectName, getSubjectColor, formatDate }: TaskRowProps) {
   const isCompleted = task.status === 'completed';
-  const subjectColor = getSubjectColor(task.subjectId);
-  
+  const subjectColor = task.subjectId ? getSubjectColor(task.subjectId) : '#ccc';
+
   return (
-    <div 
+    <div
       className={`
         flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300
         ${isCompleted ? 'bg-muted/30 border-muted' : 'bg-card border-border'}
@@ -451,7 +533,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete, isOverdue, isDueToday, getS
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: subjectColor }} />
-            <span className="text-xs text-muted-foreground">{getSubjectName(task.subjectId)}</span>
+            <span className="text-xs text-muted-foreground">{task.subjectId ? getSubjectName(task.subjectId) : 'No Subject'}</span>
           </div>
           <Badge variant="secondary" className={`
             rounded-lg text-xs
@@ -459,6 +541,12 @@ function TaskRow({ task, onToggle, onEdit, onDelete, isOverdue, isDueToday, getS
             ${isDueToday && !isCompleted ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
           `}>
             {formatDate(task.targetDate)}
+          </Badge>
+          <Badge className={`rounded-lg text-xs ${task.priority === 'high' ? 'bg-rose-500 text-white' :
+            task.priority === 'medium' ? 'bg-amber-500 text-white' :
+              'bg-blue-500 text-white'
+            }`}>
+            {task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : 'Medium'}
           </Badge>
           {isOverdue && <Badge variant="destructive" className="rounded-lg text-xs">Overdue</Badge>}
           {isDueToday && !isCompleted && <Badge className="rounded-lg text-xs bg-amber-500 text-white">Due Today</Badge>}

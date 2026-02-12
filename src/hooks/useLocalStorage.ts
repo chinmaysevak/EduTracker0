@@ -10,21 +10,24 @@ import { useState, useEffect, useCallback } from 'react';
  * @param initialValue - Default value if no data exists
  * @returns [storedValue, setValue] tuple
  */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
+export function useLocalStorage<T>(key: string, initialValue: T, userId?: string): [T, (value: T | ((val: T) => T)) => void] {
+  // If userId is provided, prefix the key. Otherwise use raw key (for global settings or legacy)
+  const scopedKey = userId ? `${userId}:${key}` : key;
+
   // Get initial value from localStorage or use default
   const readValue = useCallback((): T => {
     if (typeof window === 'undefined') {
       return initialValue;
     }
-    
+
     try {
-      const item = window.localStorage.getItem(key);
+      const item = window.localStorage.getItem(scopedKey);
       return item ? (JSON.parse(item) as T) : initialValue;
     } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
+      console.warn(`Error reading localStorage key "${scopedKey}":`, error);
       return initialValue;
     }
-  }, [initialValue, key]);
+  }, [initialValue, scopedKey]);
 
   const [storedValue, setStoredValue] = useState<T>(readValue);
 
@@ -33,30 +36,39 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
     try {
       // Allow value to be a function
       const valueToStore = value instanceof Function ? value(storedValue) : value;
-      
+
       // Save to state
       setStoredValue(valueToStore);
-      
+
       // Save to localStorage
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        window.localStorage.setItem(scopedKey, JSON.stringify(valueToStore));
+
+        // Dispatch a custom event for cross-tab sync specifically for this key
+        // Standard 'storage' event only fires on OTHER tabs, but we might want local updates too if needed.
+        // But for cross-tab, the standard event is fine.
       }
     } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
+      console.warn(`Error setting localStorage key "${scopedKey}":`, error);
     }
-  }, [key, storedValue]);
+  }, [scopedKey, storedValue]);
 
   // Listen for changes from other tabs/windows
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === key && event.newValue) {
+      if (event.key === scopedKey && event.newValue) {
         setStoredValue(JSON.parse(event.newValue));
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key]);
+  }, [scopedKey]);
+
+  // Re-read value if key changes (e.g. user switch)
+  useEffect(() => {
+    setStoredValue(readValue());
+  }, [readValue]);
 
   return [storedValue, setValue];
 }
@@ -64,26 +76,37 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
 /**
  * Hook to clear all Edu Tracker data from localStorage
  */
-export function useClearAllData() {
+export function useClearAllData(userId?: string) {
   const clearAllData = useCallback(() => {
     if (typeof window === 'undefined') return;
-    
-    const keysToRemove = [
+
+    const baseKeys = [
       'edu-tracker-subjects',
       'edu-tracker-attendance',
       'edu-tracker-timetable',
       'edu-tracker-materials',
       'edu-tracker-playlists',
       'edu-tracker-tasks',
-      'edu-tracker-progress'
+      'edu-tracker-progress',
+      'edu-tracker-focus-session', // Added focus session
+      'edu-tracker-user-profile'  // Added user profile
     ];
-    
-    keysToRemove.forEach(key => {
-      window.localStorage.removeItem(key);
+
+    // If userId is present, we clear specific user keys
+    // We also clear base keys if they happen to exist (legacy cleanup)
+    baseKeys.forEach(key => {
+      window.localStorage.removeItem(key); // Clear legacy/global
+      if (userId) {
+        window.localStorage.removeItem(`${userId}:${key}`); // Clear scoped
+      }
     });
-    
+
+    // Also clear auth if it's a full reset? 
+    // Maybe keep auth so they don't get logged out immediately if they just wanted to clear data?
+    // The previous implementation reloaded the page, which effectively resets app state.
+
     window.location.reload();
-  }, []);
+  }, [userId]);
 
   return clearAllData;
 }

@@ -1,0 +1,150 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+
+// Fix for ES modules path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables (both server/.env and project root .env)
+dotenv.config({ path: join(__dirname, '.env') });
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+/* =========================
+   Middleware
+========================= */
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://edu-tracker-six.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true
+  })
+);
+
+app.use(express.json({ limit: '50mb' }));
+
+/* =========================
+   Serverless Database Connection
+========================= */
+
+const connectDB = async () => {
+  if (mongoose.connections[0].readyState) return;
+  
+  try {
+    // Await the connection directly here so no requests pass until db is ready
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, 
+      socketTimeoutMS: 45000,
+    });
+    console.log('✅ Connected to MongoDB Atlas (Serverless)');
+  } catch (err) {
+    console.error('❌ MongoDB connection error:', err.message);
+  }
+};
+
+// Ensure database is connected BEFORE passing to routes
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
+
+/* =========================
+   Route Imports
+========================= */
+
+import authRoutes from './routes/auth.js';
+import subjectRoutes from './routes/subjects.js';
+import attendanceRoutes from './routes/attendance.js';
+import taskRoutes from './routes/tasks.js';
+import resourceRoutes from './routes/resources.js';
+import syllabusRoutes from './routes/syllabus.js';
+import topicRoutes from './routes/topics.js';
+import timetableRoutes from './routes/timetable.js';
+import notificationRoutes from './routes/notifications.js';
+import profileRoutes from './routes/profile.js';
+import focusRoutes from './routes/focus.js';
+import examRoutes from './routes/exams.js';
+import studySessionRoutes from './routes/studysessions.js';
+import importExportRoutes from './routes/importExport.js';
+import settingsRoutes from './routes/settings.js';
+import usersRoutes from './routes/users.js';
+import aiRoutes from './routes/ai.js';
+import syllabusScannerRoutes from './routes/syllabusScanner.js';
+import chatHistoryRoutes from './routes/chatHistory.js';
+
+/* =========================
+   Routes
+========================= */
+
+app.use('/api/auth', authRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/syllabus', syllabusRoutes);
+app.use('/api/topics', topicRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/focus-sessions', focusRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/studysessions', studySessionRoutes);
+app.use('/api/import-export', importExportRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/syllabus-scanner', syllabusScannerRoutes);
+app.use('/api/chat-history', chatHistoryRoutes);
+
+/* =========================
+   Health Check
+========================= */
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/* =========================
+   Error Handler
+========================= */
+
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err.message);
+
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error'
+  });
+});
+
+/* =========================
+   Serverless Database Connection
+========================= */
+
+// Start server purely if running locally
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
+    app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
+      console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
+    });
+  });
+}
+
+// Export the app for Vercel Serverless Function compatibility
+export default app;
